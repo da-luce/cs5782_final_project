@@ -1,5 +1,6 @@
 import argparse
 import json
+import os
 import time
 
 from datasets import load_dataset
@@ -9,9 +10,24 @@ import evaluate
 import torch
 
 from models import get_baseline_model, get_lora_model
+from lora import count_parameters
 
 TRAIN_SAMPLES = 2000
 VAL_SAMPLES = 500
+
+# Dataset-specific configuration for SST-2 and MNLI
+DATASET_CONFIG = {
+    "sst2": {
+        "num_labels": 2,
+        "text_fields": ["sentence"],
+        "val_split": "validation",
+    },
+    "mnli": {
+        "num_labels": 3,
+        "text_fields": ["premise", "hypothesis"],
+        "val_split": "validation_matched",
+    },
+}
 
 
 def get_device():
@@ -24,6 +40,13 @@ def get_device():
 
 
 def run_experiment(mode, dataset_name):
+    if dataset_name not in DATASET_CONFIG:
+        raise ValueError(f"Unsupported dataset '{dataset_name}'. Choose from: {list(DATASET_CONFIG.keys())}")
+
+    cfg = DATASET_CONFIG[dataset_name]
+    num_labels = cfg["num_labels"]
+    text_fields = cfg["text_fields"]
+    val_split = cfg["val_split"]
 
     device = get_device()
     print(f"Using device: {device}")
@@ -32,23 +55,26 @@ def run_experiment(mode, dataset_name):
 
     dataset = load_dataset("glue", dataset_name)
 
-    # select a subset for faster training
+    # Select a subset for faster training
     dataset["train"] = dataset["train"].select(range(TRAIN_SAMPLES))
-    dataset["validation"] = dataset["validation"].select(range(VAL_SAMPLES))
+    dataset[val_split] = dataset[val_split].select(range(VAL_SAMPLES))
 
     tokenizer = AutoTokenizer.from_pretrained("roberta-base")
 
     def tokenize(batch):
-        return tokenizer(batch["sentence"], truncation=True, padding="max_length")
+        return tokenizer(*[batch[f] for f in text_fields], truncation=True, padding="max_length")
 
-    # Important: tokenize the dataset after selecting the subset, 
-    # otherwise it will take a long time to tokenize the entire dataset
+    # Tokenize after selecting the subset to avoid processing the full dataset
     dataset = dataset.map(tokenize, batched=True)
 
-    # model switch
-    model = get_baseline_model() if mode == "baseline" else get_lora_model()
+    model = get_baseline_model(num_labels=num_labels) if mode == "baseline" else get_lora_model(num_labels=num_labels)
 
-    # metrics
+    param_info = count_parameters(model)
+    print(f"\nParameter counts ({mode}):")
+    print(f"  Total:     {param_info['total']:,}")
+    print(f"  Trainable: {param_info['trainable']:,} ({param_info['trainable_pct']}%)")
+    print(f"  Frozen:    {param_info['frozen']:,}\n")
+
     metric = evaluate.load("accuracy")
 
     def compute_metrics(eval_pred):
@@ -56,30 +82,28 @@ def run_experiment(mode, dataset_name):
         preds = np.argmax(logits, axis=-1)
         return metric.compute(predictions=preds, references=labels)
 
-    # training args
     args = TrainingArguments(
-        output_dir=f"results/{mode}",
+        output_dir=f"results/{mode}_{dataset_name}",
         eval_strategy="epoch",
         learning_rate=2e-5 if mode == "baseline" else 2e-4,
         per_device_train_batch_size=8,
         num_train_epochs=2,
-        no_cuda=False,
-        report_to="none"
+        report_to="none",
     )
 
     trainer = Trainer(
         model=model,
         args=args,
         train_dataset=dataset["train"],
-        eval_dataset=dataset["validation"],
-        compute_metrics=compute_metrics
+        eval_dataset=dataset[val_split],
+        compute_metrics=compute_metrics,
     )
 
     trainer.train()
 
     eval_result = trainer.evaluate()
 
-    trainer.save_model(f"./models/{mode}")
+    trainer.save_model(f"./models/{mode}_{dataset_name}")
 
     end_time = time.time()
 
@@ -94,26 +118,25 @@ def run_experiment(mode, dataset_name):
         "batch_size": 8,
         "eval_results": eval_result,
         "training_time_sec": end_time - start_time,
-        "model_output_dir": f"./models/{mode}"
+        "trainable_params": param_info,
+        "model_output_dir": f"./models/{mode}_{dataset_name}",
     }
 
-    os.makedirs("./models/info", exist_ok=True)
+    os.makedirs("./results", exist_ok=True)
 
-    info_path = f"./models/info/{mode}_{dataset_name}.json"
+    info_path = f"./results/{mode}_{dataset_name}.json"
     with open(info_path, "w") as f:
         json.dump(info, f, indent=4)
 
-    print(f"\nSaved model to ./models/{mode}")
-    print(f"Saved run info to {info_path}")
+    print(f"\nSaved model to ./models/{mode}_{dataset_name}")
+    print(f"Saved results to {info_path}")
+
 
 def main():
     parser = argparse.ArgumentParser()
-
     parser.add_argument("--mode", type=str, required=True, choices=["baseline", "lora"])
-    parser.add_argument("--dataset", type=str, default="sst2")
-
+    parser.add_argument("--dataset", type=str, default="sst2", choices=list(DATASET_CONFIG.keys()))
     args = parser.parse_args()
-
     run_experiment(args.mode, args.dataset)
 
 

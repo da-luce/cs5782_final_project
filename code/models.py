@@ -1,23 +1,31 @@
 from transformers import AutoModelForSequenceClassification
-from peft import LoraConfig, get_peft_model
 
-def get_baseline_model():
+from lora import apply_lora
+
+
+def get_baseline_model(num_labels: int = 2):
     return AutoModelForSequenceClassification.from_pretrained(
         "roberta-base",
-        num_labels=2
+        num_labels=num_labels,
     )
 
-def get_lora_model():
+
+def get_lora_model(
+    num_labels: int = 2,
+    r: int = 8,
+    lora_alpha: float = 16.0,
+    lora_dropout: float = 0.1,
+):
     model = AutoModelForSequenceClassification.from_pretrained(
         "roberta-base",
-        num_labels=2
+        num_labels=num_labels,
     )
 
-    config = LoraConfig(
-        r=8,
-        lora_alpha=16,
+    return apply_lora(
+        model,
         target_modules=["query", "value"],
-        lora_dropout=0.1
+        r=r,
+        lora_alpha=lora_alpha,
+        lora_dropout=lora_dropout,
+        modules_to_save=["classifier"],
     )
-
-    return get_peft_model(model, config)
