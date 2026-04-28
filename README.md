@@ -31,6 +31,11 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
+### Open in Colab
+
+- Open [`demo.ipynb`](./demo.ipynb) in Google Colab
+- Run all cells
+
 ## 6. Results / Insights
 
 TODO:
