@@ -62,7 +62,7 @@ def run_experiment(mode, dataset_name):
     tokenizer = AutoTokenizer.from_pretrained("roberta-base")
 
     def tokenize(batch):
-        return tokenizer(*[batch[f] for f in text_fields], truncation=True, padding="max_length")
+        return tokenizer(*[batch[f] for f in text_fields], truncation=True, padding="max_length", max_length=128)
 
     # Tokenize after selecting the subset to avoid processing the full dataset
     dataset = dataset.map(tokenize, batched=True)

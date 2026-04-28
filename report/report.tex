@@ -1,0 +1,170 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{times}
+\usepackage{setspace}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{hyperref}
+\usepackage{cite}
+
+\singlespacing
+\setlength{\parskip}{4pt}
+\setlength{\parindent}{0pt}
+
+% ─── Title ───────────────────────────────────────────────────────────────────
+\title{
+  \vspace{-1.5em}
+  \large\textbf{Re-implementing LoRA: Low-Rank Adaptation of Large Language Models} \\
+  \normalsize CS 4/5782 Final Project --- Cornell University, Spring 2026
+}
+\author{
+  Jason Dong (jd876) \quad Dalton Luce (dcl252) \quad Sennet Senadheera (sas639)
+}
+\date{}
+
+\begin{document}
+\maketitle
+\vspace{-1em}
+
+% ─── 1. Introduction ─────────────────────────────────────────────────────────
+\section*{1. Introduction}
+
+Full fine-tuning of large pre-trained language models requires updating every
+parameter, which becomes prohibitively expensive as model sizes grow to billions
+of parameters. \textbf{LoRA} (Hu et al., 2021) \cite{lora} addresses this by
+freezing the pre-trained weights and injecting trainable low-rank decomposition
+matrices into the attention layers. For a weight matrix $W \in \mathbb{R}^{d
+\times k}$, LoRA reparameterizes the update as $\Delta W = BA$, where $B \in
+\mathbb{R}^{d \times r}$ and $A \in \mathbb{R}^{r \times k}$ with rank $r \ll
+\min(d, k)$. This reduces trainable parameters by orders of magnitude with no
+additional inference latency, since $W + BA$ can be merged at inference time.
+
+We re-implement LoRA from scratch (without the PEFT library) and evaluate it
+against full fine-tuning on RoBERTa-base \cite{roberta}, targeting the results
+reported in Table~2 of the original paper.
+
+% ─── 2. Chosen Result ────────────────────────────────────────────────────────
+\section*{2. Chosen Result}
+
+We reproduce the RoBERTa-base results from \textbf{Table~2} of Hu et al.\ (2021),
+specifically the comparison of full fine-tuning vs.\ LoRA ($r=8$) on two GLUE
+\cite{glue} tasks: SST-2 (binary sentiment classification) and MNLI (3-class
+natural language inference). The key claim is that LoRA reduces trainable
+parameters from $\sim$125M (100\%) to $\sim$0.3M ($\sim$0.3\%) while matching
+or exceeding full fine-tuning accuracy (94.8 vs.\ 94.9 on SST-2; 87.6 vs.\ 87.5
+on MNLI).
+
+% ─── 3. Methodology ──────────────────────────────────────────────────────────
+\section*{3. Methodology}
+
+\textbf{Custom LoRA implementation.}
+We implement LoRA entirely from scratch in \texttt{code/lora.py}. The core
+class, \texttt{LoRALinear}, wraps any \texttt{nn.Linear} layer with two
+additional parameter matrices: $A$ (initialized with kaiming-uniform, equivalent
+in scale to the Gaussian initialization specified in the paper) and $B$
+(initialized to zero, so $\Delta W = BA = 0$ at the start of training). The
+forward pass computes:
+\[
+  h = W_0 x + \frac{\alpha}{r}(BAx)
+\]
+where $\alpha$ is a scaling hyperparameter. The function \texttt{apply\_lora()}
+freezes all base model parameters, replaces the \texttt{query} and \texttt{value}
+projection layers in each of RoBERTa's 12 transformer blocks with
+\texttt{LoRALinear}, and keeps the task-specific classification head trainable
+(it is randomly initialized per task and must be trained).
+
+\textbf{Hyperparameters.}
+We use $r=8$ and $\alpha=16$ (matching Table~2 of the paper), dropout 0.1,
+learning rate $2 \times 10^{-4}$ for LoRA and $2 \times 10^{-5}$ for full
+fine-tuning, batch size 8, and 2 training epochs.
+
+\textbf{Feasibility modifications.}
+To make experiments feasible on a single Colab GPU, we make two adjustments
+relative to the paper: (1) we use a random subset of 2,000 training samples
+and 500 validation samples per task (vs.\ full datasets of 67K/393K), and (2)
+we truncate sequences to a maximum length of 128 tokens rather than RoBERTa's
+default of 512, since the vast majority of SST-2 sentences and MNLI sentence
+pairs fit within 128 tokens. Both adjustments reduce compute while preserving
+the qualitative comparison between methods.
+
+\textbf{Datasets and evaluation.}
+SST-2 and MNLI are loaded via HuggingFace \texttt{datasets}. We evaluate
+accuracy on \texttt{validation} (SST-2) and \texttt{validation\_matched} (MNLI).
+
+% ─── 4. Results & Analysis ───────────────────────────────────────────────────
+\section*{4. Results \& Analysis}
+
+% TODO: Fill in after running experiments in Colab.
+% Suggested table format:
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{llrrrr}
+  \toprule
+  Method & Dataset & Accuracy & Trainable params & \% of total & Train time \\
+  \midrule
+  Full fine-tuning & SST-2  & \textit{TBD} & \textit{TBD} & 100\%  & \textit{TBD} \\
+  LoRA ($r=8$)     & SST-2  & \textit{TBD} & \textit{TBD} & $\sim$0.3\% & \textit{TBD} \\
+  Full fine-tuning & MNLI   & \textit{TBD} & \textit{TBD} & 100\%  & \textit{TBD} \\
+  LoRA ($r=8$)     & MNLI   & \textit{TBD} & \textit{TBD} & $\sim$0.3\% & \textit{TBD} \\
+  \midrule
+  Full fine-tuning & SST-2 (paper) & 94.8 & 125M & 100\% & --- \\
+  LoRA ($r=8$)     & SST-2 (paper) & 94.9 & 0.3M & 0.3\% & --- \\
+  Full fine-tuning & MNLI  (paper) & 87.6 & 125M & 100\% & --- \\
+  LoRA ($r=8$)     & MNLI  (paper) & 87.5 & 0.3M & 0.3\% & --- \\
+  \bottomrule
+\end{tabular}
+\caption{Re-implementation results vs.\ original paper (Table~2). Experiments
+run on a Colab GPU with 2,000 training samples, 2 epochs.}
+\end{table}
+
+% TODO: Discuss discrepancies, e.g.:
+%   - Lower accuracy expected due to smaller training set (2K vs full dataset)
+%   - LoRA/baseline gap should still be small, confirming the paper's claim
+%   - Parameter counts should exactly match paper values
+
+% ─── 5. Reflections ──────────────────────────────────────────────────────────
+\section*{5. Reflections}
+
+% TODO: Fill in after experiments. Suggested talking points:
+%   - What worked as expected vs. what surprised you
+%   - The importance of keeping the classifier head trainable (easy bug to miss)
+%   - Feasibility tradeoffs: smaller subset means lower absolute accuracy
+%     but the relative comparison between methods should hold
+%   - What you would do differently: train on full dataset, more epochs,
+%     ablation over rank r
+
+% ─── References ──────────────────────────────────────────────────────────────
+\bibliographystyle{plain}
+
+\begin{thebibliography}{9}
+
+\bibitem{lora}
+Hu, E.~J., Shen, Y., Wallis, P., Allen-Zhu, Z., Li, Y., Wang, S., Wang, L.,
+\& Chen, W. (2021).
+\textit{LoRA: Low-Rank Adaptation of Large Language Models.}
+arXiv:2106.09685.
+
+\bibitem{roberta}
+Liu, Y., Ott, M., Goyal, N., Du, J., Joshi, M., Chen, D., Levy, O.,
+Lewis, M., Zettlemoyer, L., \& Stoyanov, V. (2019).
+\textit{RoBERTa: A Robustly Optimized BERT Pretraining Approach.}
+arXiv:1907.11692.
+
+\bibitem{glue}
+Wang, A., Singh, A., Michael, J., Hill, F., Levy, O., \& Bowman, S. (2018).
+\textit{GLUE: A Multi-Task Benchmark and Analysis Platform for Natural Language
+Understanding.}
+arXiv:1804.07461.
+
+\bibitem{transformers}
+Wolf, T., et al.\ (2020).
+\textit{HuggingFace's Transformers: State-of-the-art Natural Language Processing.}
+arXiv:1910.03771.
+
+\end{thebibliography}
+
+\end{document}
