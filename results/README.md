@@ -30,7 +30,14 @@ All result files follow this nested format:
         "learning_rate": 0.0002,
         "batch_size": 8,
         "time_sec": 345.67,
-        "model_output_dir": "./models/lora_sst2"
+        "peak_memory_mb": 1024.5,
+        "checkpoint_size_mb": 487.2,
+        "model_output_dir": "./models/lora_sst2",
+        "log_history": [
+            { "loss": 0.54, "epoch": 1.0, "step": 625 },
+            { "eval_loss": 0.32, "eval_accuracy": 0.884, "epoch": 1.0, "step": 625 },
+            "..."
+        ]
     },
     "eval": {
         "samples": 500,
@@ -44,5 +51,9 @@ All result files follow this nested format:
         }
     }
 }
+```
 
-Notice that for the baseline, we do not train the model so the training key should be ignored or treated as null metadata.
+Notes:
+- For `baseline` mode, `training.executed` is `false` and `time_sec`, `peak_memory_mb`, `checkpoint_size_mb` are `0.0`. `model_output_dir` is omitted and `log_history` contains only the final eval entry.
+- `log_history` entries alternate between training steps (contain `loss`) and eval checkpoints (contain `eval_loss`, `eval_accuracy`). Both are emitted at epoch boundaries due to `logging_strategy="epoch"`, so their `step` values align.
+- `peak_memory_mb` is peak allocated GPU memory (or MPS); `0.0` on CPU.

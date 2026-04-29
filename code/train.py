@@ -105,11 +105,14 @@ def run_experiment(mode, dataset_name, train_samples=TRAIN_SAMPLES, val_samples=
         preds = np.argmax(logits, axis=-1)
         return metric.compute(predictions=preds, references=labels)
 
+    batch_size = 8
+
     args = TrainingArguments(
         output_dir=f"results/{mode}_{dataset_name}",
         eval_strategy="epoch",
+        logging_strategy="epoch",
         learning_rate=mode_cfg["learning_rate"],
-        per_device_train_batch_size=8,
+        per_device_train_batch_size=batch_size,
         num_train_epochs=epochs if is_training else 0,
         report_to="none",
     )
@@ -170,7 +173,7 @@ def run_experiment(mode, dataset_name, train_samples=TRAIN_SAMPLES, val_samples=
             "samples": train_samples if is_training else 0,
             "epochs": epochs if is_training else 0,
             "learning_rate": mode_cfg["learning_rate"],
-            "batch_size": 8,
+            "batch_size": batch_size,
             "time_sec": train_time_sec,
             "peak_memory_mb": peak_memory_mb,
             "checkpoint_size_mb": checkpoint_size_mb,

@@ -6,208 +6,213 @@
     <title>Training Metrics Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; 
-            margin: 0; 
-            padding: 2rem; 
-            background: #f9fafb; 
-            color: #1f2937; 
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 0;
+            padding: 2rem;
+            background: #f9fafb;
+            color: #1f2937;
         }
-        .container { 
-            max-width: 1200px; 
-            margin: 0 auto; 
-        }
-        h1 { 
-            text-align: center; 
-            margin-bottom: 2rem;
+        .container { max-width: 1200px; margin: 0 auto; }
+        h1 { text-align: center; margin-bottom: 2rem; }
+        .section-title {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.07em;
+            margin: 2.5rem 0 1rem;
         }
         .file-upload-wrapper {
-            border: 2px dashed #d1d5db; 
-            padding: 2.5rem; 
+            border: 2px dashed #d1d5db;
+            padding: 2.5rem;
             text-align: center;
-            border-radius: 8px; 
-            background-color: #ffffff; 
+            border-radius: 8px;
+            background-color: #ffffff;
             cursor: pointer;
-            margin-bottom: 2rem; 
+            margin-bottom: 2rem;
             transition: background-color 0.2s, border-color 0.2s;
         }
-        .file-upload-wrapper:hover { 
-            background-color: #f3f4f6; 
-            border-color: #9ca3af;
+        .file-upload-wrapper:hover { background-color: #f3f4f6; border-color: #9ca3af; }
+        .file-upload-wrapper p { margin: 0; font-size: 1.1rem; color: #4b5563; }
+        .file-upload-wrapper input[type="file"] { display: none; }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
         }
-        .file-upload-wrapper p {
-            margin: 0;
-            font-size: 1.1rem;
-            color: #4b5563;
-        }
-        .file-upload-wrapper input[type="file"] { 
-            display: none; 
-        }
-        .grid { 
-            display: grid; 
-            grid-template-columns: 1fr; 
-            gap: 2rem; 
-        }
-        @media (min-width: 1024px) {
-            .grid { grid-template-columns: 1fr 1fr; }
+        @media (min-width: 900px)  { .grid        { grid-template-columns: 1fr 1fr; } }
+        @media (min-width: 1024px) { .global-grid { grid-template-columns: 1fr 1fr 1fr; } }
+        .global-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
         }
         .card {
-            background: white; 
-            border-radius: 8px; 
+            background: white;
+            border-radius: 8px;
             padding: 1.5rem;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06); 
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
             display: flex;
             flex-direction: column;
         }
-        .card-header { 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            margin-bottom: 1rem; 
-            border-bottom: 1px solid #e5e7eb; 
-            padding-bottom: 1rem; 
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            border-bottom: 1px solid #e5e7eb;
+            padding-bottom: 1rem;
         }
-        .card-title { 
-            font-size: 1.25rem; 
-            font-weight: 600; 
-            margin: 0; 
-            word-break: break-all;
-            padding-right: 1rem;
-        }
+        .card-title { font-size: 1.1rem; font-weight: 600; margin: 0; word-break: break-all; padding-right: 1rem; }
         .btn-remove {
-            background-color: #ef4444; 
-            color: white; 
+            background-color: #ef4444;
+            color: white;
             border: none;
-            padding: 0.35rem 0.75rem; 
-            border-radius: 4px; 
+            padding: 0.35rem 0.75rem;
+            border-radius: 4px;
             cursor: pointer;
             font-size: 0.875rem;
             font-weight: 500;
+            flex-shrink: 0;
             transition: background-color 0.2s;
         }
-        .btn-remove:hover { 
-            background-color: #dc2828; 
-        }
-        .metadata-box { 
-            display: grid; 
+        .btn-remove:hover { background-color: #dc2828; }
+        .metadata-box {
+            display: grid;
             grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-            gap: 1rem; 
-            margin-bottom: 1.5rem; 
+            gap: 1rem;
+            margin-bottom: 1.5rem;
             background-color: #f3f4f6;
             padding: 1rem;
             border-radius: 6px;
         }
-        .metadata-item { 
-            display: flex; 
-            flex-direction: column; 
-        }
-        .metadata-label { 
-            font-size: 0.75rem; 
-            color: #6b7280; 
-            font-weight: 600; 
-            text-transform: uppercase; 
+        .metadata-item { display: flex; flex-direction: column; }
+        .metadata-label {
+            font-size: 0.75rem;
+            color: #6b7280;
+            font-weight: 600;
+            text-transform: uppercase;
             letter-spacing: 0.05em;
             margin-bottom: 0.25rem;
         }
-        .metadata-value { 
-            font-size: 1.1rem; 
-            font-weight: 500; 
-        }
-        .chart-container { 
-            position: relative; 
-            height: 350px; 
-            width: 100%; 
-            margin-top: auto;
-        }
+        .metadata-value { font-size: 1.1rem; font-weight: 500; }
+        .chart-container { position: relative; height: 260px; width: 100%; margin-top: auto; }
+        .chart-container.tall { height: 350px; }
+        #global-section { display: none; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <h1>Training Metrics Dashboard</h1>
-    
+
     <div class="file-upload-wrapper" id="drop-zone" onclick="document.getElementById('file-input').click()">
         <p>Click to select or drag and drop <strong>results JSON files</strong> here</p>
         <input type="file" id="file-input" accept=".json" multiple onchange="handleFileSelect(event)">
     </div>
 
-    <div class="grid" id="graphs-container">
-        <!-- Dynamically populated cards -->
+    <div id="global-section">
+        <p class="section-title">Aggregate Comparison</p>
+        <div class="global-grid">
+            <div class="card">
+                <div class="card-header"><h2 class="card-title">Peak VRAM (MB)</h2></div>
+                <div class="chart-container"><canvas id="vram-chart"></canvas></div>
+            </div>
+            <div class="card">
+                <div class="card-header"><h2 class="card-title">Training Time (min)</h2></div>
+                <div class="chart-container"><canvas id="time-chart"></canvas></div>
+            </div>
+            <div class="card">
+                <div class="card-header"><h2 class="card-title">Final Val Loss</h2></div>
+                <div class="chart-container"><canvas id="acc-chart"></canvas></div>
+            </div>
+        </div>
+
+        <p class="section-title">Training &amp; Validation Curves</p>
     </div>
+
+    <div class="grid" id="graphs-container"></div>
 </div>
 
 <script>
-    const charts = {}; // Maps filename to its Chart.js instance
-    const dropZone = document.getElementById('drop-zone');
+    const experiments   = {};  // filename → parsed data
+    const perFileCharts = {};  // filename → Chart instance
+    const globalCharts  = {};  // key      → Chart instance
 
-    // Drag and drop events
-    dropZone.addEventListener('dragover', (e) => { 
-        e.preventDefault(); 
-        dropZone.style.backgroundColor = '#f3f4f6'; 
-        dropZone.style.borderColor = '#9ca3af';
-    });
-    dropZone.addEventListener('dragleave', (e) => { 
-        e.preventDefault(); 
-        dropZone.style.backgroundColor = '#ffffff'; 
-        dropZone.style.borderColor = '#d1d5db';
-    });
+    // Consistent colors per mode; fallback palette for unknown modes
+    const MODE_COLORS = {
+        baseline: '#6b7280',
+        finetune: '#3b82f6',
+        lora:     '#10b981',
+    };
+    const FALLBACK_COLORS = ['#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316'];
+
+    function modeColor(mode, fallbackIndex) {
+        return MODE_COLORS[mode] ?? FALLBACK_COLORS[fallbackIndex % FALLBACK_COLORS.length];
+    }
+
+    // ── drag & drop ──────────────────────────────────────────────────────────
+    const dropZone = document.getElementById('drop-zone');
+    dropZone.addEventListener('dragover',  (e) => { e.preventDefault(); dropZone.style.backgroundColor = '#f3f4f6'; dropZone.style.borderColor = '#9ca3af'; });
+    dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); dropZone.style.backgroundColor = '#ffffff';  dropZone.style.borderColor = '#d1d5db'; });
     dropZone.addEventListener('drop', (e) => {
         e.preventDefault();
-        dropZone.style.backgroundColor = '#ffffff'; 
+        dropZone.style.backgroundColor = '#ffffff';
         dropZone.style.borderColor = '#d1d5db';
-        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-            handleFiles(e.dataTransfer.files);
-        }
+        if (e.dataTransfer.files?.length) handleFiles(e.dataTransfer.files);
     });
 
     function handleFileSelect(event) {
-        if (event.target.files && event.target.files.length > 0) {
-            handleFiles(event.target.files);
-        }
-        event.target.value = ''; // Reset file input so the same files can be re-selected if needed
+        if (event.target.files?.length) handleFiles(event.target.files);
+        event.target.value = '';
     }
 
     function handleFiles(files) {
         Array.from(files).forEach(file => {
             const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const data = JSON.parse(e.target.result);
-                    processData(data, file.name);
-                } catch (err) {
-                    alert("Error parsing JSON (" + file.name + "): " + err.message);
-                }
+            reader.onload = (e) => {
+                try { processData(JSON.parse(e.target.result), file.name); }
+                catch (err) { alert('Error parsing JSON (' + file.name + '): ' + err.message); }
             };
             reader.readAsText(file);
         });
     }
 
+    // ── field extraction (handles old flat + new nested JSON) ─────────────────
+    function extractFields(data) {
+        return {
+            logHistory: data.training?.log_history ?? data.log_history ?? [],
+            acc:        data.eval?.results?.eval_loss        ?? data.eval_results?.eval_loss,
+            timeSec:    data.training?.time_sec             ?? data.training_time_sec,
+            ckptMb:     data.training?.checkpoint_size_mb   ?? data.checkpoint_size_mb,
+            vramMb:     data.training?.peak_memory_mb       ?? data.peak_memory_mb,
+            dataset:    data.metadata?.dataset ?? data.dataset ?? 'N/A',
+            mode:       data.metadata?.mode    ?? data.mode    ?? 'N/A',
+        };
+    }
+
+    // ── per-file cards ────────────────────────────────────────────────────────
     function processData(data, filename) {
-        const logHistory = data.training?.log_history ?? data.log_history ?? [];
+        if (experiments[filename]) return;
+        experiments[filename] = data;
+        renderPerFileCard(data, filename);
+        updateGlobalCharts();
+        document.getElementById('global-section').style.display = 'block';
+    }
 
-        // Prevent duplicate panels for the exact same file
-        if (charts[filename]) {
-            return;
-        }
+    function renderPerFileCard(data, filename) {
+        const { logHistory, acc, timeSec, ckptMb, vramMb, dataset, mode } = extractFields(data);
 
-        const container = document.getElementById('graphs-container');
+        const timeMin  = timeSec ? (timeSec / 60).toFixed(1) + ' min' : 'N/A';
+        const ckptSize = ckptMb  ? ckptMb.toFixed(1)  + ' MB'        : 'N/A';
+        const vram     = vramMb  ? vramMb.toFixed(1)  + ' MB'        : 'N/A';
+        const accStr   = acc !== undefined ? acc.toFixed(4)           : 'N/A';
+
         const cardId = 'card-' + filename.replace(/[^a-zA-Z0-9]/g, '-');
-
-        // Create the card element
         const card = document.createElement('div');
         card.className = 'card';
         card.id = cardId;
-
-        const acc = data.eval?.results?.eval_accuracy ?? data.eval_results?.eval_accuracy;
-        const timeSec = data.training?.time_sec ?? data.training_time_sec;
-        const timeMin = timeSec ? (timeSec / 60).toFixed(1) + ' min' : 'N/A';
-        const ckptMb = data.training?.checkpoint_size_mb ?? data.checkpoint_size_mb;
-        const ckptSize = ckptMb ? ckptMb.toFixed(1) + ' MB' : 'N/A';
-        const vramMb = data.training?.peak_memory_mb ?? data.peak_memory_mb;
-        const vram = vramMb ? vramMb.toFixed(1) + ' MB' : 'N/A';
-        const dataset = data.metadata?.dataset ?? data.dataset ?? 'N/A';
-        const mode = data.metadata?.mode ?? data.mode ?? 'N/A';
-
         card.innerHTML = `
             <div class="card-header">
                 <h2 class="card-title">${filename.replace('.json', '')}</h2>
@@ -219,98 +224,131 @@
                 <div class="metadata-item"><span class="metadata-label">Time</span><span class="metadata-value">${timeMin}</span></div>
                 <div class="metadata-item"><span class="metadata-label">Disk Size</span><span class="metadata-value">${ckptSize}</span></div>
                 <div class="metadata-item"><span class="metadata-label">Peak VRAM</span><span class="metadata-value">${vram}</span></div>
-                <div class="metadata-item"><span class="metadata-label">Best Acc</span><span class="metadata-value" style="color:#10b981; font-weight:bold;">${acc !== undefined ? acc.toFixed(4) : 'N/A'}</span></div>
+                <div class="metadata-item"><span class="metadata-label">Val Loss</span><span class="metadata-value" style="color:#10b981;font-weight:bold;">${accStr}</span></div>
             </div>
-            <div class="chart-container">
+            <div class="chart-container tall">
                 <canvas id="canvas-${cardId}"></canvas>
             </div>
         `;
+        document.getElementById('graphs-container').appendChild(card);
 
-        container.appendChild(card);
-
-        // Process Log History
-        const trainLoss = [];
-        const evalLoss = [];
-
+        // Build series from log_history
+        const trainLossPts = [], evalLossPts = [];
         logHistory.forEach(log => {
-            if (log.loss !== undefined) {
-                trainLoss.push({ x: log.step, y: log.loss });
-            }
-            if (log.eval_loss !== undefined) {
-                evalLoss.push({ x: log.step, y: log.eval_loss });
-            }
+            const x = log.epoch ?? log.step;
+            if (log.loss      !== undefined) trainLossPts.push({ x, y: log.loss });
+            if (log.eval_loss !== undefined) evalLossPts.push({ x, y: log.eval_loss });
         });
 
-        // Initialize Chart
+        const datasets = [];
+        if (trainLossPts.length) datasets.push({
+            label: 'Train Loss',
+            data: trainLossPts,
+            borderColor: '#ef4444',
+            backgroundColor: 'rgba(239,68,68,0.08)',
+            borderWidth: 2, tension: 0.1, fill: true, spanGaps: true,
+        });
+        if (evalLossPts.length) datasets.push({
+            label: 'Val Loss',
+            data: evalLossPts,
+            borderColor: '#10b981',
+            backgroundColor: 'rgba(16,185,129,0.08)',
+            borderWidth: 2, tension: 0.1, fill: false, spanGaps: true,
+            pointRadius: 5, pointHoverRadius: 7,
+        });
+
         const ctx = document.getElementById(`canvas-${cardId}`).getContext('2d');
-        
-        charts[filename] = new Chart(ctx, {
+        perFileCharts[filename] = new Chart(ctx, {
             type: 'line',
-            data: {
-                datasets: [
-                    {
-                        label: 'Training Loss',
-                        data: trainLoss,
-                        borderColor: '#3b82f6',
-                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                        borderWidth: 2,
-                        tension: 0.1,
-                        fill: true,
-                        spanGaps: true
-                    },
-                    {
-                        label: 'Validation Loss',
-                        data: evalLoss,
-                        borderColor: '#ef4444',
-                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                        borderWidth: 2,
-                        tension: 0.1,
-                        fill: false,
-                        spanGaps: true,
-                        pointBackgroundColor: '#ef4444',
-                        pointRadius: 4,
-                        pointHoverRadius: 6
-                    }
-                ]
-            },
+            data: { datasets },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                interaction: {
-                    mode: 'index',
-                    intersect: false,
-                },
+                interaction: { mode: 'index', intersect: false },
                 scales: {
                     x: {
                         type: 'linear',
-                        title: { 
-                            display: true, 
-                            text: 'Steps', 
-                            font: { weight: 'bold' } 
-                        }
+                        title: { display: true, text: 'Epoch', font: { weight: 'bold' } },
                     },
                     y: {
-                        title: { 
-                            display: true, 
-                            text: 'Loss', 
-                            font: { weight: 'bold' } 
-                        },
-                        beginAtZero: true
-                    }
-                }
-            }
+                        beginAtZero: true,
+                        title: { display: true, text: 'Loss', font: { weight: 'bold' } },
+                    },
+                },
+            },
         });
     }
 
-    // Remove the specific graph and card
-    function removeGraph(filename, cardId) {
-        if (charts[filename]) {
-            charts[filename].destroy();
-            delete charts[filename];
+    // ── global grouped bar charts ─────────────────────────────────────────────
+    function updateGlobalCharts() {
+        // Collect unique datasets and modes (sorted for stable order)
+        const datasetSet = new Set(), modeSet = new Set();
+        Object.values(experiments).forEach(d => {
+            const f = extractFields(d);
+            datasetSet.add(f.dataset);
+            modeSet.add(f.mode);
+        });
+        const dsLabels = [...datasetSet].sort();
+        const modes    = [...modeSet].sort();
+
+        function groupedDatasets(valueExtractor) {
+            return modes.map((mode, i) => ({
+                label: mode,
+                data: dsLabels.map(ds => {
+                    const exp = Object.values(experiments).find(d => {
+                        const f = extractFields(d);
+                        return f.dataset === ds && f.mode === mode;
+                    });
+                    return exp ? valueExtractor(exp) : null;
+                }),
+                backgroundColor: modeColor(mode, i),
+                borderRadius: 4,
+            }));
         }
-        const card = document.getElementById(cardId);
-        if (card) {
-            card.remove();
+
+        rebuildGroupedBar('vramGlobal', 'vram-chart', dsLabels,
+            groupedDatasets(d => d.training?.peak_memory_mb ?? d.peak_memory_mb ?? 0));
+
+        rebuildGroupedBar('timeGlobal', 'time-chart', dsLabels,
+            groupedDatasets(d => {
+                const s = d.training?.time_sec ?? d.training_time_sec ?? 0;
+                return parseFloat((s / 60).toFixed(2));
+            }));
+
+        rebuildGroupedBar('accGlobal', 'acc-chart', dsLabels,
+            groupedDatasets(d => d.eval?.results?.eval_loss ?? d.eval_results?.eval_loss ?? null));
+    }
+
+    function rebuildGroupedBar(key, canvasId, labels, datasets, yExtra = {}) {
+        if (globalCharts[key]) { globalCharts[key].destroy(); delete globalCharts[key]; }
+        if (!labels.length) return;
+        const ctx = document.getElementById(canvasId).getContext('2d');
+        globalCharts[key] = new Chart(ctx, {
+            type: 'bar',
+            data: { labels, datasets },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: true, position: 'bottom' } },
+                scales: {
+                    x: { ticks: { maxRotation: 0 } },
+                    y: { beginAtZero: true, ...yExtra },
+                },
+            },
+        });
+    }
+
+    // ── remove ────────────────────────────────────────────────────────────────
+    function removeGraph(filename, cardId) {
+        if (perFileCharts[filename]) { perFileCharts[filename].destroy(); delete perFileCharts[filename]; }
+        delete experiments[filename];
+        document.getElementById(cardId)?.remove();
+
+        if (!Object.keys(experiments).length) {
+            document.getElementById('global-section').style.display = 'none';
+            Object.keys(globalCharts).forEach(k => { globalCharts[k].destroy(); delete globalCharts[k]; });
+        } else {
+            updateGlobalCharts();
         }
     }
 </script>
