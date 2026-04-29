@@ -101,13 +101,31 @@ def run_experiment(mode, dataset_name, train_samples=TRAIN_SAMPLES, val_samples=
         compute_metrics=compute_metrics,
     )
 
+    if torch.cuda.is_available():
+        torch.cuda.reset_peak_memory_stats()
+
     trainer.train()
 
     eval_result = trainer.evaluate()
 
-    trainer.save_model(f"./models/{mode}_{dataset_name}")
+    model_dir = f"./models/{mode}_{dataset_name}"
+    trainer.save_model(model_dir)
 
     end_time = time.time()
+
+    def get_dir_size_mb(path):
+        total_size = 0
+        for dirpath, _, filenames in os.walk(path):
+            for f in filenames:
+                fp = os.path.join(dirpath, f)
+                if not os.path.islink(fp):
+                    total_size += os.path.getsize(fp)
+        return total_size / (1024 * 1024)
+
+    checkpoint_size_mb = get_dir_size_mb(model_dir)
+    peak_memory_mb = 0
+    if torch.cuda.is_available():
+        peak_memory_mb = torch.cuda.max_memory_allocated() / (1024 * 1024)
 
     info = {
         "mode": mode,
@@ -121,7 +139,9 @@ def run_experiment(mode, dataset_name, train_samples=TRAIN_SAMPLES, val_samples=
         "eval_results": eval_result,
         "training_time_sec": end_time - start_time,
         "trainable_params": param_info,
-        "model_output_dir": f"./models/{mode}_{dataset_name}",
+        "model_output_dir": model_dir,
+        "checkpoint_size_mb": checkpoint_size_mb,
+        "peak_memory_mb": peak_memory_mb,
         "log_history": trainer.state.log_history,
     }
 

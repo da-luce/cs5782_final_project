@@ -203,6 +203,8 @@
         
         const acc = data.eval_results?.eval_accuracy;
         const timeMin = data.training_time_sec ? (data.training_time_sec/60).toFixed(1) + ' min' : 'N/A';
+        const ckptSize = data.checkpoint_size_mb ? data.checkpoint_size_mb.toFixed(1) + ' MB' : 'N/A';
+        const vram = data.peak_memory_mb ? data.peak_memory_mb.toFixed(1) + ' MB' : 'N/A';
 
         card.innerHTML = `
             <div class="card-header">
@@ -212,8 +214,9 @@
             <div class="metadata-box">
                 <div class="metadata-item"><span class="metadata-label">Dataset</span><span class="metadata-value">${data.dataset || 'N/A'}</span></div>
                 <div class="metadata-item"><span class="metadata-label">Mode</span><span class="metadata-value">${data.mode || 'N/A'}</span></div>
-                <div class="metadata-item"><span class="metadata-label">Epochs</span><span class="metadata-value">${data.epochs || 'N/A'}</span></div>
                 <div class="metadata-item"><span class="metadata-label">Time</span><span class="metadata-value">${timeMin}</span></div>
+                <div class="metadata-item"><span class="metadata-label">Disk Size</span><span class="metadata-value">${ckptSize}</span></div>
+                <div class="metadata-item"><span class="metadata-label">Peak VRAM</span><span class="metadata-value">${vram}</span></div>
                 <div class="metadata-item"><span class="metadata-label">Best Acc</span><span class="metadata-value" style="color:#10b981; font-weight:bold;">${acc !== undefined ? acc.toFixed(4) : 'N/A'}</span></div>
             </div>
             <div class="chart-container">
