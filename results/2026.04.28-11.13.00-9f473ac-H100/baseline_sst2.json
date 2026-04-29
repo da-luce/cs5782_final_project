@@ -1,0 +1,26 @@
+{
+    "mode": "baseline",
+    "dataset": "sst2",
+    "device": "cuda",
+    "train_samples": 5000,
+    "val_samples": 500,
+    "epochs": 5,
+    "learning_rate": 2e-05,
+    "batch_size": 8,
+    "eval_results": {
+        "eval_loss": 0.47022122144699097,
+        "eval_accuracy": 0.924,
+        "eval_runtime": 0.5395,
+        "eval_samples_per_second": 926.789,
+        "eval_steps_per_second": 116.775,
+        "epoch": 5.0
+    },
+    "training_time_sec": 119.317209482193,
+    "trainable_params": {
+        "total": 124647170,
+        "trainable": 124647170,
+        "frozen": 0,
+        "trainable_pct": 100.0
+    },
+    "model_output_dir": "./models/baseline_sst2"
+}

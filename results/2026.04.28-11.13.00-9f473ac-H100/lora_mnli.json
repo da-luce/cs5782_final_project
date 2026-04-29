@@ -1,0 +1,26 @@
+{
+    "mode": "lora",
+    "dataset": "mnli",
+    "device": "cuda",
+    "train_samples": 5000,
+    "val_samples": 500,
+    "epochs": 5,
+    "learning_rate": 0.0002,
+    "batch_size": 8,
+    "eval_results": {
+        "eval_loss": 0.6207331418991089,
+        "eval_accuracy": 0.772,
+        "eval_runtime": 0.5885,
+        "eval_samples_per_second": 849.678,
+        "eval_steps_per_second": 107.059,
+        "epoch": 5.0
+    },
+    "training_time_sec": 78.5124819278717,
+    "trainable_params": {
+        "total": 124942851,
+        "trainable": 887811,
+        "frozen": 124055040,
+        "trainable_pct": 0.7106
+    },
+    "model_output_dir": "./models/lora_mnli"
+}

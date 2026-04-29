@@ -1,0 +1,26 @@
+{
+    "mode": "baseline",
+    "dataset": "mnli",
+    "device": "cuda",
+    "train_samples": 5000,
+    "val_samples": 500,
+    "epochs": 5,
+    "learning_rate": 2e-05,
+    "batch_size": 8,
+    "eval_results": {
+        "eval_loss": 1.36081063747406,
+        "eval_accuracy": 0.792,
+        "eval_runtime": 0.5375,
+        "eval_samples_per_second": 930.188,
+        "eval_steps_per_second": 117.204,
+        "epoch": 5.0
+    },
+    "training_time_sec": 115.1189923286438,
+    "trainable_params": {
+        "total": 124647939,
+        "trainable": 124647939,
+        "frozen": 0,
+        "trainable_pct": 100.0
+    },
+    "model_output_dir": "./models/baseline_mnli"
+}
