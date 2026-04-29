@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Training Loss Visualization</title>
+    <title>Training Metrics Comparison</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
@@ -14,7 +14,7 @@
             color: #1f2937;
         }
         .container {
-            max-width: 1000px;
+            max-width: 1200px;
             margin: 0 auto;
             background-color: white;
             padding: 2rem;
@@ -41,31 +41,58 @@
         .file-upload-wrapper input[type="file"] {
             display: none;
         }
+        .controls {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 1rem;
+        }
+        .btn-clear {
+            background-color: #ef4444;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .btn-clear:hover {
+            background-color: #dc2828;
+        }
         .chart-container {
             position: relative;
-            height: 500px;
+            height: 600px;
             width: 100%;
         }
         .metadata-box {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            display: flex;
+            flex-wrap: wrap;
             gap: 1rem;
             margin-bottom: 2rem;
+        }
+        .file-meta {
             padding: 1rem;
             background-color: #f3f4f6;
             border-radius: 8px;
+            flex: 1;
+            min-width: 250px;
+        }
+        .file-meta h3 {
+            margin: 0 0 0.5rem 0;
+            font-size: 1rem;
+            color: #374151;
+            word-break: break-all;
         }
         .metadata-item {
             display: flex;
-            flex-direction: column;
+            justify-content: space-between;
+            font-size: 0.875rem;
+            margin-bottom: 0.25rem;
         }
         .metadata-label {
-            font-size: 0.875rem;
             color: #6b7280;
             font-weight: 600;
         }
         .metadata-value {
-            font-size: 1.125rem;
             font-weight: 500;
         }
     </style>
@@ -73,14 +100,18 @@
 <body>
 
 <div class="container">
-    <h1>Training Metrics Visualization</h1>
+    <h1>Training Metrics Comparison</h1>
     
     <div class="file-upload-wrapper" id="drop-zone" onclick="document.getElementById('file-input').click()">
-        <p>Click to select or drag and drop a <strong>results JSON file</strong> here</p>
-        <input type="file" id="file-input" accept=".json" onchange="handleFileSelect(event)">
+        <p>Click to select or drag and drop <strong>multiple results JSON files</strong> here</p>
+        <input type="file" id="file-input" accept=".json" multiple onchange="handleFileSelect(event)">
     </div>
 
-    <div id="metadata-container" class="metadata-box" style="display: none;">
+    <div class="controls" id="controls" style="display: none;">
+        <button class="btn-clear" onclick="clearData()">Clear Data & Start Over</button>
+    </div>
+
+    <div id="metadata-container" class="metadata-box">
         <!-- Filled via JS -->
     </div>
 
@@ -91,9 +122,21 @@
 
 <script>
     let chartInstance = null;
+    let allChartDatasets = [];
+    let uploadedFiles = [];
+    
+    // Distinct color palette for different files
+    const colors = [
+        { border: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)' },   // Blue
+        { border: '#ef4444', bg: 'rgba(239, 68, 68, 0.1)' },   // Red
+        { border: '#10b981', bg: 'rgba(16, 185, 129, 0.1)' },  // Green
+        { border: '#f59e0b', bg: 'rgba(245, 158, 11, 0.1)' },  // Yellow/Orange
+        { border: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.1)' },  // Purple
+        { border: '#ec4899', bg: 'rgba(236, 72, 153, 0.1)' },  // Pink
+    ];
+
     const dropZone = document.getElementById('drop-zone');
 
-    // Drag and drop event listeners
     dropZone.addEventListener('dragover', (e) => {
         e.preventDefault();
         dropZone.style.backgroundColor = '#e5e7eb';
@@ -106,54 +149,83 @@
         e.preventDefault();
         dropZone.style.backgroundColor = '#f3f4f6';
         if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-            processFile(e.dataTransfer.files[0]);
+            handleFiles(e.dataTransfer.files);
         }
     });
 
     function handleFileSelect(event) {
         if (event.target.files && event.target.files.length > 0) {
-            processFile(event.target.files[0]);
+            handleFiles(event.target.files);
         }
+        event.target.value = ''; // Reset to allow re-selection
     }
 
-    function processFile(file) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            try {
-                const data = JSON.parse(e.target.result);
-                displayData(data, file.name);
-            } catch (err) {
-                alert("Error parsing JSON: " + err.message);
-            }
-        };
-        reader.readAsText(file);
+    function handleFiles(files) {
+        Array.from(files).forEach(file => {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    processData(data, file.name);
+                } catch (err) {
+                    alert("Error parsing JSON (" + file.name + "): " + err.message);
+                }
+            };
+            reader.readAsText(file);
+        });
     }
 
-    function displayData(data, filename) {
+    function clearData() {
+        allChartDatasets = [];
+        uploadedFiles = [];
+        if (chartInstance) {
+            chartInstance.destroy();
+            chartInstance = null;
+        }
+        document.getElementById('metadata-container').innerHTML = '';
+        document.getElementById('chart-container').style.display = 'none';
+        document.getElementById('controls').style.display = 'none';
+    }
+
+    function processData(data, filename) {
         if (!data.log_history || !Array.isArray(data.log_history)) {
-            alert("No log_history found in the JSON file. Ensure you ran training after the update.");
+            alert("No log_history found in " + filename + ". Ensure you ran training after the update.");
             return;
         }
+        
+        // Prevent duplicate processing
+        if (uploadedFiles.includes(filename)) {
+            return; 
+        }
+        
+        const fileColor = colors[uploadedFiles.length % colors.length];
+        uploadedFiles.push(filename);
 
-        // Display Metadata
+        // --- Render Metadata Card ---
         const metaContainer = document.getElementById('metadata-container');
-        metaContainer.innerHTML = `
+        const metaCard = document.createElement('div');
+        metaCard.className = 'file-meta';
+        metaCard.style.borderTop = `4px solid ${fileColor.border}`;
+        
+        const acc = data.eval_results?.eval_accuracy;
+        const timeMin = data.training_time_sec ? (data.training_time_sec/60).toFixed(1) + ' min' : 'N/A';
+
+        metaCard.innerHTML = `
+            <h3>${filename.replace('.json', '')}</h3>
             <div class="metadata-item"><span class="metadata-label">Dataset</span><span class="metadata-value">${data.dataset || 'N/A'}</span></div>
             <div class="metadata-item"><span class="metadata-label">Mode</span><span class="metadata-value">${data.mode || 'N/A'}</span></div>
             <div class="metadata-item"><span class="metadata-label">Epochs</span><span class="metadata-value">${data.epochs || 'N/A'}</span></div>
-            <div class="metadata-item"><span class="metadata-label">Learning Rate</span><span class="metadata-value">${data.learning_rate || 'N/A'}</span></div>
-            <div class="metadata-item"><span class="metadata-label">Training Time</span><span class="metadata-value">${(data.training_time_sec/60).toFixed(2)} mins</span></div>
+            <div class="metadata-item"><span class="metadata-label">Time</span><span class="metadata-value">${timeMin}</span></div>
+            <div class="metadata-item"><span class="metadata-label">Best Acc</span><span class="metadata-value" style="color:${fileColor.border}">${acc !== undefined ? acc.toFixed(4) : 'N/A'}</span></div>
         `;
-        metaContainer.style.display = 'grid';
+        metaContainer.appendChild(metaCard);
 
-        // Process Log History
-        const steps = [];
+        // --- Process Log History for Chart ---
         const trainLoss = [];
         const evalLoss = [];
 
         data.log_history.forEach(log => {
             if (log.loss !== undefined) {
-                steps.push(log.step);
                 trainLoss.push({ x: log.step, y: log.loss });
             }
             if (log.eval_loss !== undefined) {
@@ -161,14 +233,44 @@
             }
         });
 
-        // Unique sorted steps for x-axis if we wanted line charts properly aligned
-        const allSteps = [...new Set([...trainLoss.map(d=>d.x), ...evalLoss.map(d=>d.x)])].sort((a,b)=>a-b);
+        // Add to global datasets
+        if (trainLoss.length > 0) {
+            allChartDatasets.push({
+                label: `${filename} (Train)`,
+                data: trainLoss,
+                borderColor: fileColor.border,
+                backgroundColor: 'transparent',
+                borderWidth: 2,
+                tension: 0.1,
+                borderDash: [5, 5], // Dashed line to differentiate training vs eval
+                fill: false,
+                spanGaps: true,
+                pointRadius: 3
+            });
+        }
+        
+        if (evalLoss.length > 0) {
+            allChartDatasets.push({
+                label: `${filename} (Val)`,
+                data: evalLoss,
+                borderColor: fileColor.border,
+                backgroundColor: fileColor.border,
+                borderWidth: 2,
+                tension: 0.1,
+                fill: false,
+                spanGaps: true,
+                pointBackgroundColor: fileColor.border,
+                pointRadius: 5,
+                pointHoverRadius: 7
+            });
+        }
 
         document.getElementById('chart-container').style.display = 'block';
-        renderChart(filename, trainLoss, evalLoss, allSteps);
+        document.getElementById('controls').style.display = 'flex';
+        renderChart();
     }
 
-    function renderChart(title, trainLoss, evalLoss, labels) {
+    function renderChart() {
         const ctx = document.getElementById('lossChart').getContext('2d');
         
         if (chartInstance) {
@@ -178,48 +280,30 @@
         chartInstance = new Chart(ctx, {
             type: 'line',
             data: {
-                datasets: [
-                    {
-                        label: 'Training Loss',
-                        data: trainLoss,
-                        borderColor: '#3b82f6',
-                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                        borderWidth: 2,
-                        tension: 0.1,
-                        fill: true,
-                        spanGaps: true
-                    },
-                    {
-                        label: 'Validation Loss',
-                        data: evalLoss,
-                        borderColor: '#ef4444',
-                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                        borderWidth: 2,
-                        tension: 0.1,
-                        fill: false,
-                        spanGaps: true,
-                        pointBackgroundColor: '#ef4444',
-                        pointRadius: 4
-                    }
-                ]
+                datasets: allChartDatasets
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                interaction: {
+                    mode: 'nearest',
+                    axis: 'x',
+                    intersect: false
+                },
                 scales: {
                     x: {
                         type: 'linear',
                         title: {
                             display: true,
-                            text: 'Steps',
-                            font: { weight: 'bold' }
+                            text: 'Training Steps',
+                            font: { weight: 'bold', size: 14 }
                         }
                     },
                     y: {
                         title: {
                             display: true,
                             text: 'Loss',
-                            font: { weight: 'bold' }
+                            font: { weight: 'bold', size: 14 }
                         },
                         beginAtZero: true
                     }
@@ -227,12 +311,8 @@
                 plugins: {
                     title: {
                         display: true,
-                        text: `Loss Curve for ${title}`,
+                        text: `Comparison of Loss Curves (Solid = Validation, Dashed = Training)`,
                         font: { size: 16 }
-                    },
-                    tooltip: {
-                        mode: 'index',
-                        intersect: false,
                     }
                 }
             }

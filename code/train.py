@@ -86,6 +86,7 @@ def run_experiment(mode, dataset_name, train_samples=TRAIN_SAMPLES, val_samples=
     args = TrainingArguments(
         output_dir=f"results/{mode}_{dataset_name}",
         eval_strategy="epoch",
+        logging_strategy="epoch",
         learning_rate=2e-5 if mode == "baseline" else 2e-4,
         per_device_train_batch_size=8,
         num_train_epochs=epochs,
