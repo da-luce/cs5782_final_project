@@ -12,8 +12,9 @@ import torch
 from models import get_baseline_model, get_lora_model
 from lora import count_parameters
 
-TRAIN_SAMPLES = 2000
+TRAIN_SAMPLES = 20000
 VAL_SAMPLES = 500
+
 
 # Dataset-specific configuration for SST-2 and MNLI
 DATASET_CONFIG = {
@@ -39,7 +40,7 @@ def get_device():
         return "cpu"
 
 
-def run_experiment(mode, dataset_name):
+def run_experiment(mode, dataset_name, train_samples=TRAIN_SAMPLES, val_samples=VAL_SAMPLES):
     if dataset_name not in DATASET_CONFIG:
         raise ValueError(f"Unsupported dataset '{dataset_name}'. Choose from: {list(DATASET_CONFIG.keys())}")
 
@@ -56,8 +57,8 @@ def run_experiment(mode, dataset_name):
     dataset = load_dataset("glue", dataset_name)
 
     # Select a subset for faster training
-    dataset["train"] = dataset["train"].select(range(TRAIN_SAMPLES))
-    dataset[val_split] = dataset[val_split].select(range(VAL_SAMPLES))
+    dataset["train"] = dataset["train"].select(range(train_samples))
+    dataset[val_split] = dataset[val_split].select(range(val_samples))
 
     tokenizer = AutoTokenizer.from_pretrained("roberta-base")
 
@@ -111,8 +112,8 @@ def run_experiment(mode, dataset_name):
         "mode": mode,
         "dataset": dataset_name,
         "device": device,
-        "train_samples": TRAIN_SAMPLES,
-        "val_samples": VAL_SAMPLES,
+        "train_samples": train_samples,
+        "val_samples": val_samples,
         "epochs": 2,
         "learning_rate": 2e-5 if mode == "baseline" else 2e-4,
         "batch_size": 8,
@@ -136,8 +137,10 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--mode", type=str, required=True, choices=["baseline", "lora"])
     parser.add_argument("--dataset", type=str, default="sst2", choices=list(DATASET_CONFIG.keys()))
+    parser.add_argument("--train_samples", type=int, default=TRAIN_SAMPLES)
+    parser.add_argument("--val_samples", type=int, default=VAL_SAMPLES)
     args = parser.parse_args()
-    run_experiment(args.mode, args.dataset)
+    run_experiment(args.mode, args.dataset, args.train_samples, args.val_samples)
 
 
 if __name__ == "__main__":
