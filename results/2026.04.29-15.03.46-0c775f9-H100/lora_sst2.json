@@ -1,0 +1,104 @@
+{
+    "metadata": {
+        "mode": "lora",
+        "dataset": "sst2",
+        "device": "cuda"
+    },
+    "model": {
+        "total": 124942082,
+        "trainable": 887042,
+        "frozen": 124055040,
+        "trainable_pct": 0.71
+    },
+    "training": {
+        "executed": true,
+        "samples": 50000,
+        "epochs": 3,
+        "learning_rate": 0.0002,
+        "batch_size": 8,
+        "time_sec": 393.60093998908997,
+        "peak_memory_mb": 1045.17041015625,
+        "checkpoint_size_mb": 476.6514654159546,
+        "log_history": [
+            {
+                "loss": 0.296,
+                "grad_norm": 3.6856541633605957,
+                "learning_rate": 0.000133344,
+                "epoch": 1.0,
+                "step": 6250
+            },
+            {
+                "eval_loss": 0.2089073657989502,
+                "eval_accuracy": 0.9357798165137615,
+                "eval_runtime": 1.0139,
+                "eval_samples_per_second": 860.066,
+                "eval_steps_per_second": 107.508,
+                "epoch": 1.0,
+                "step": 6250
+            },
+            {
+                "loss": 0.2335,
+                "grad_norm": 7.449085712432861,
+                "learning_rate": 6.667733333333333e-05,
+                "epoch": 2.0,
+                "step": 12500
+            },
+            {
+                "eval_loss": 0.2747754454612732,
+                "eval_accuracy": 0.9369266055045872,
+                "eval_runtime": 1.0104,
+                "eval_samples_per_second": 862.989,
+                "eval_steps_per_second": 107.874,
+                "epoch": 2.0,
+                "step": 12500
+            },
+            {
+                "loss": 0.2097,
+                "grad_norm": 15.625499725341797,
+                "learning_rate": 1.0666666666666668e-08,
+                "epoch": 3.0,
+                "step": 18750
+            },
+            {
+                "eval_loss": 0.2635197341442108,
+                "eval_accuracy": 0.9346330275229358,
+                "eval_runtime": 0.9992,
+                "eval_samples_per_second": 872.694,
+                "eval_steps_per_second": 109.087,
+                "epoch": 3.0,
+                "step": 18750
+            },
+            {
+                "train_runtime": 393.3254,
+                "train_samples_per_second": 381.364,
+                "train_steps_per_second": 47.67,
+                "total_flos": 9900638438400000.0,
+                "train_loss": 0.24636794921875,
+                "epoch": 3.0,
+                "step": 18750
+            },
+            {
+                "eval_loss": 0.2635197341442108,
+                "eval_accuracy": 0.9346330275229358,
+                "eval_runtime": 1.0009,
+                "eval_samples_per_second": 871.195,
+                "eval_steps_per_second": 108.899,
+                "epoch": 3.0,
+                "step": 18750
+            }
+        ],
+        "model_output_dir": "./models/lora_sst2"
+    },
+    "eval": {
+        "samples": 872,
+        "time_sec": 1.0031869411468506,
+        "results": {
+            "eval_loss": 0.2635197341442108,
+            "eval_accuracy": 0.9346330275229358,
+            "eval_runtime": 1.0009,
+            "eval_samples_per_second": 871.195,
+            "eval_steps_per_second": 108.899,
+            "epoch": 3.0
+        }
+    }
+}

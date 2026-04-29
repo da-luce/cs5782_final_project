@@ -1,0 +1,46 @@
+{
+    "metadata": {
+        "mode": "baseline",
+        "dataset": "sst2",
+        "device": "cuda"
+    },
+    "model": {
+        "total": 124647170,
+        "trainable": 124647170,
+        "frozen": 0,
+        "trainable_pct": 100.0
+    },
+    "training": {
+        "executed": false,
+        "samples": 0,
+        "epochs": 0,
+        "learning_rate": 0.0,
+        "batch_size": 8,
+        "time_sec": 0.0,
+        "peak_memory_mb": 543.2685546875,
+        "checkpoint_size_mb": 0.0,
+        "log_history": [
+            {
+                "eval_loss": 0.7014936208724976,
+                "eval_model_preparation_time": 0.0017,
+                "eval_accuracy": 0.5091743119266054,
+                "eval_runtime": 1.5949,
+                "eval_samples_per_second": 546.755,
+                "eval_steps_per_second": 68.344,
+                "step": 0
+            }
+        ]
+    },
+    "eval": {
+        "samples": 872,
+        "time_sec": 1.6170361042022705,
+        "results": {
+            "eval_loss": 0.7014936208724976,
+            "eval_model_preparation_time": 0.0017,
+            "eval_accuracy": 0.5091743119266054,
+            "eval_runtime": 1.5949,
+            "eval_samples_per_second": 546.755,
+            "eval_steps_per_second": 68.344
+        }
+    }
+}
