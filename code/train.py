@@ -123,12 +123,16 @@ def run_experiment(mode, dataset_name, train_samples=TRAIN_SAMPLES, val_samples=
     )
 
     # 6. Execution (Train & Eval with independent timing)
+    if device == "cuda":
+        torch.cuda.reset_peak_memory_stats()
+
     train_time_sec = 0.0
+    model_dir = None
     if is_training:
         train_start = time.time()
         trainer.train()
         train_time_sec = time.time() - train_start
-        
+
         model_dir = f"./models/{mode}_{dataset_name}"
         trainer.save_model(model_dir)
         print(f"\nSaved model to {model_dir}")
@@ -136,6 +140,22 @@ def run_experiment(mode, dataset_name, train_samples=TRAIN_SAMPLES, val_samples=
     eval_start = time.time()
     eval_result = trainer.evaluate()
     eval_time_sec = time.time() - eval_start
+
+    # Peak VRAM usage
+    if device == "cuda":
+        peak_memory_mb = torch.cuda.max_memory_allocated() / 1024**2
+    elif device == "mps":
+        peak_memory_mb = torch.mps.current_allocated_memory() / 1024**2
+    else:
+        peak_memory_mb = 0.0
+
+    # Saved checkpoint size on disk
+    checkpoint_size_mb = 0.0
+    if model_dir and os.path.isdir(model_dir):
+        for dirpath, _, filenames in os.walk(model_dir):
+            for fname in filenames:
+                checkpoint_size_mb += os.path.getsize(os.path.join(dirpath, fname))
+        checkpoint_size_mb /= 1024**2
 
     # 7. Structured Logging & Saving Results
     info = {
@@ -152,6 +172,9 @@ def run_experiment(mode, dataset_name, train_samples=TRAIN_SAMPLES, val_samples=
             "learning_rate": mode_cfg["learning_rate"],
             "batch_size": 8,
             "time_sec": train_time_sec,
+            "peak_memory_mb": peak_memory_mb,
+            "checkpoint_size_mb": checkpoint_size_mb,
+            "log_history": trainer.state.log_history,
         },
         "eval": {
             "samples": val_samples,
@@ -159,8 +182,8 @@ def run_experiment(mode, dataset_name, train_samples=TRAIN_SAMPLES, val_samples=
             "results": eval_result,
         }
     }
-    
-    if is_training:
+
+    if model_dir:
         info["training"]["model_output_dir"] = model_dir
 
     os.makedirs("./results", exist_ok=True)

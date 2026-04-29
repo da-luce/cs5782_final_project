@@ -183,28 +183,30 @@
     }
 
     function processData(data, filename) {
-        if (!data.log_history || !Array.isArray(data.log_history)) {
-            alert("No log_history found in " + filename + ". Ensure you ran training after the update.");
-            return;
-        }
-        
+        const logHistory = data.training?.log_history ?? data.log_history ?? [];
+
         // Prevent duplicate panels for the exact same file
         if (charts[filename]) {
-            return; 
+            return;
         }
-        
+
         const container = document.getElementById('graphs-container');
         const cardId = 'card-' + filename.replace(/[^a-zA-Z0-9]/g, '-');
-        
+
         // Create the card element
         const card = document.createElement('div');
         card.className = 'card';
         card.id = cardId;
-        
-        const acc = data.eval_results?.eval_accuracy;
-        const timeMin = data.training_time_sec ? (data.training_time_sec/60).toFixed(1) + ' min' : 'N/A';
-        const ckptSize = data.checkpoint_size_mb ? data.checkpoint_size_mb.toFixed(1) + ' MB' : 'N/A';
-        const vram = data.peak_memory_mb ? data.peak_memory_mb.toFixed(1) + ' MB' : 'N/A';
+
+        const acc = data.eval?.results?.eval_accuracy ?? data.eval_results?.eval_accuracy;
+        const timeSec = data.training?.time_sec ?? data.training_time_sec;
+        const timeMin = timeSec ? (timeSec / 60).toFixed(1) + ' min' : 'N/A';
+        const ckptMb = data.training?.checkpoint_size_mb ?? data.checkpoint_size_mb;
+        const ckptSize = ckptMb ? ckptMb.toFixed(1) + ' MB' : 'N/A';
+        const vramMb = data.training?.peak_memory_mb ?? data.peak_memory_mb;
+        const vram = vramMb ? vramMb.toFixed(1) + ' MB' : 'N/A';
+        const dataset = data.metadata?.dataset ?? data.dataset ?? 'N/A';
+        const mode = data.metadata?.mode ?? data.mode ?? 'N/A';
 
         card.innerHTML = `
             <div class="card-header">
@@ -212,8 +214,8 @@
                 <button class="btn-remove" onclick="removeGraph('${filename}', '${cardId}')">Remove</button>
             </div>
             <div class="metadata-box">
-                <div class="metadata-item"><span class="metadata-label">Dataset</span><span class="metadata-value">${data.dataset || 'N/A'}</span></div>
-                <div class="metadata-item"><span class="metadata-label">Mode</span><span class="metadata-value">${data.mode || 'N/A'}</span></div>
+                <div class="metadata-item"><span class="metadata-label">Dataset</span><span class="metadata-value">${dataset}</span></div>
+                <div class="metadata-item"><span class="metadata-label">Mode</span><span class="metadata-value">${mode}</span></div>
                 <div class="metadata-item"><span class="metadata-label">Time</span><span class="metadata-value">${timeMin}</span></div>
                 <div class="metadata-item"><span class="metadata-label">Disk Size</span><span class="metadata-value">${ckptSize}</span></div>
                 <div class="metadata-item"><span class="metadata-label">Peak VRAM</span><span class="metadata-value">${vram}</span></div>
@@ -223,14 +225,14 @@
                 <canvas id="canvas-${cardId}"></canvas>
             </div>
         `;
-        
+
         container.appendChild(card);
 
         // Process Log History
         const trainLoss = [];
         const evalLoss = [];
 
-        data.log_history.forEach(log => {
+        logHistory.forEach(log => {
             if (log.loss !== undefined) {
                 trainLoss.push({ x: log.step, y: log.loss });
             }
