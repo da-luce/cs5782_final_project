@@ -106,10 +106,10 @@ accuracy on \texttt{validation} (SST-2) and \texttt{validation\_matched} (MNLI).
   \toprule
   Method & Dataset & Accuracy & Trainable params & \% of total & Train time \\
   \midrule
-  Full fine-tuning & SST-2  & \textit{TBD} & \textit{TBD} & 100\%  & \textit{TBD} \\
-  LoRA ($r=8$)     & SST-2  & \textit{TBD} & \textit{TBD} & $\sim$0.3\% & \textit{TBD} \\
-  Full fine-tuning & MNLI   & \textit{TBD} & \textit{TBD} & 100\%  & \textit{TBD} \\
-  LoRA ($r=8$)     & MNLI   & \textit{TBD} & \textit{TBD} & $\sim$0.3\% & \textit{TBD} \\
+  Full fine-tuning & SST-2  & 92.4 & 124.6M & 100\%  & 2.0m \\
+  LoRA ($r=8$)     & SST-2  & 92.6 & 0.9M & 0.71\% & 1.3m \\
+  Full fine-tuning & MNLI   & 79.2 & 124.6M & 100\%  & 1.9m \\
+  LoRA ($r=8$)     & MNLI   & 77.2 & 0.9M & 0.71\% & 1.3m \\
   \midrule
   Full fine-tuning & SST-2 (paper) & 94.8 & 125M & 100\% & --- \\
   LoRA ($r=8$)     & SST-2 (paper) & 94.9 & 0.3M & 0.3\% & --- \\
