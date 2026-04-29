@@ -75,8 +75,19 @@ def run_experiment(mode, dataset_name, train_samples=TRAIN_SAMPLES, val_samples=
 
     # 2. Data Loading & Subsetting
     dataset = load_dataset("glue", dataset_name)
-    val_dataset = dataset[data_cfg["val_split"]].select(range(val_samples))
-    train_dataset = dataset["train"].select(range(train_samples)) if is_training else None
+    val_split = dataset[data_cfg["val_split"]]
+    if val_samples > len(val_split):
+        print(f"Warning: val_samples={val_samples} exceeds dataset size {len(val_split)}, using {len(val_split)}")
+        val_samples = len(val_split)
+    val_dataset = val_split.select(range(val_samples))
+    if is_training:
+        train_split = dataset["train"]
+        if train_samples > len(train_split):
+            print(f"Warning: train_samples={train_samples} exceeds dataset size {len(train_split)}, using {len(train_split)}")
+            train_samples = len(train_split)
+        train_dataset = train_split.select(range(train_samples))
+    else:
+        train_dataset = None
 
     # 3. Tokenization 
     tokenizer = AutoTokenizer.from_pretrained("roberta-base")
