@@ -1,0 +1,50 @@
+{
+  "mode": "lora",
+  "dataset": "mnli",
+  "seed": 42,
+  "device": "cuda",
+  "train_size": 10000,
+  "validation_sizes": {
+    "validation_matched": 9815,
+    "validation_mismatched": 9832
+  },
+  "epochs": 5,
+  "learning_rate": 0.0005,
+  "batch_size": 32,
+  "max_seq_length": 128,
+  "warmup_ratio": 0.06,
+  "weight_decay": 0.0,
+  "lora": {
+    "r": 8,
+    "alpha": 8.0,
+    "dropout": 0.1,
+    "n_injected_modules": 24
+  },
+  "param_report": {
+    "total": 124942851,
+    "trainable": 887811,
+    "frozen": 124055040,
+    "lora_trainable": 294912,
+    "non_lora_trainable": 592899,
+    "trainable_pct": 0.710573668596693
+  },
+  "eval_results": {
+    "validation_matched": {
+      "validation_matched_loss": 0.5192747712135315,
+      "validation_matched_accuracy": 0.8110035659704534,
+      "validation_matched_runtime": 47.1901,
+      "validation_matched_samples_per_second": 207.989,
+      "validation_matched_steps_per_second": 6.506,
+      "epoch": 5.0
+    },
+    "validation_mismatched": {
+      "validation_mismatched_loss": 0.5154959559440613,
+      "validation_mismatched_accuracy": 0.8106183889340928,
+      "validation_mismatched_runtime": 49.0896,
+      "validation_mismatched_samples_per_second": 200.287,
+      "validation_mismatched_steps_per_second": 6.274,
+      "epoch": 5.0
+    }
+  },
+  "training_time_sec": 860.3506183624268
+}

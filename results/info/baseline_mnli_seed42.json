@@ -1,0 +1,45 @@
+{
+  "mode": "baseline",
+  "dataset": "mnli",
+  "seed": 42,
+  "device": "cuda",
+  "train_size": 10000,
+  "validation_sizes": {
+    "validation_matched": 9815,
+    "validation_mismatched": 9832
+  },
+  "epochs": 5,
+  "learning_rate": 2e-05,
+  "batch_size": 32,
+  "max_seq_length": 128,
+  "warmup_ratio": 0.06,
+  "weight_decay": 0.0,
+  "lora": null,
+  "param_report": {
+    "total": 124647939,
+    "trainable": 124647939,
+    "frozen": 0,
+    "lora_trainable": 0,
+    "non_lora_trainable": 124647939,
+    "trainable_pct": 100.0
+  },
+  "eval_results": {
+    "validation_matched": {
+      "validation_matched_loss": 0.6934052109718323,
+      "validation_matched_accuracy": 0.8151808456444218,
+      "validation_matched_runtime": 46.1498,
+      "validation_matched_samples_per_second": 212.677,
+      "validation_matched_steps_per_second": 6.652,
+      "epoch": 5.0
+    },
+    "validation_mismatched": {
+      "validation_mismatched_loss": 0.6802665591239929,
+      "validation_mismatched_accuracy": 0.8200772986167616,
+      "validation_mismatched_runtime": 47.8454,
+      "validation_mismatched_samples_per_second": 205.495,
+      "validation_mismatched_steps_per_second": 6.437,
+      "epoch": 5.0
+    }
+  },
+  "training_time_sec": 1092.4176936149597
+}

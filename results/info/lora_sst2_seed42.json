@@ -1,0 +1,41 @@
+{
+  "mode": "lora",
+  "dataset": "sst2",
+  "seed": 42,
+  "device": "cuda",
+  "train_size": 10000,
+  "validation_sizes": {
+    "validation": 872
+  },
+  "epochs": 5,
+  "learning_rate": 0.0005,
+  "batch_size": 32,
+  "max_seq_length": 128,
+  "warmup_ratio": 0.06,
+  "weight_decay": 0.0,
+  "lora": {
+    "r": 8,
+    "alpha": 8.0,
+    "dropout": 0.1,
+    "n_injected_modules": 24
+  },
+  "param_report": {
+    "total": 124942082,
+    "trainable": 887042,
+    "frozen": 124055040,
+    "lora_trainable": 294912,
+    "non_lora_trainable": 592130,
+    "trainable_pct": 0.7099625568909601
+  },
+  "eval_results": {
+    "validation": {
+      "validation_loss": 0.2543284595012665,
+      "validation_accuracy": 0.926605504587156,
+      "validation_runtime": 2.391,
+      "validation_samples_per_second": 364.694,
+      "validation_steps_per_second": 11.71,
+      "epoch": 5.0
+    }
+  },
+  "training_time_sec": 256.3461003303528
+}
