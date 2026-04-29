@@ -12,9 +12,9 @@ import torch
 from models import get_baseline_model, get_lora_model
 from lora import count_parameters
 
-TRAIN_SAMPLES = 20000
+TRAIN_SAMPLES = 5000
 VAL_SAMPLES = 500
-
+EPOCHS = 5
 
 # Dataset-specific configuration for SST-2 and MNLI
 DATASET_CONFIG = {
@@ -40,7 +40,7 @@ def get_device():
         return "cpu"
 
 
-def run_experiment(mode, dataset_name, train_samples=TRAIN_SAMPLES, val_samples=VAL_SAMPLES):
+def run_experiment(mode, dataset_name, train_samples=TRAIN_SAMPLES, val_samples=VAL_SAMPLES, epochs=EPOCHS):
     if dataset_name not in DATASET_CONFIG:
         raise ValueError(f"Unsupported dataset '{dataset_name}'. Choose from: {list(DATASET_CONFIG.keys())}")
 
@@ -88,7 +88,7 @@ def run_experiment(mode, dataset_name, train_samples=TRAIN_SAMPLES, val_samples=
         eval_strategy="epoch",
         learning_rate=2e-5 if mode == "baseline" else 2e-4,
         per_device_train_batch_size=8,
-        num_train_epochs=2,
+        num_train_epochs=epochs,
         report_to="none",
     )
 
@@ -114,7 +114,7 @@ def run_experiment(mode, dataset_name, train_samples=TRAIN_SAMPLES, val_samples=
         "device": device,
         "train_samples": train_samples,
         "val_samples": val_samples,
-        "epochs": 2,
+        "epochs": epochs,
         "learning_rate": 2e-5 if mode == "baseline" else 2e-4,
         "batch_size": 8,
         "eval_results": eval_result,
@@ -139,8 +139,9 @@ def main():
     parser.add_argument("--dataset", type=str, default="sst2", choices=list(DATASET_CONFIG.keys()))
     parser.add_argument("--train_samples", type=int, default=TRAIN_SAMPLES)
     parser.add_argument("--val_samples", type=int, default=VAL_SAMPLES)
+    parser.add_argument("--epochs", type=int, default=EPOCHS)
     args = parser.parse_args()
-    run_experiment(args.mode, args.dataset, args.train_samples, args.val_samples)
+    run_experiment(args.mode, args.dataset, args.train_samples, args.val_samples, args.epochs)
 
 
 if __name__ == "__main__":
