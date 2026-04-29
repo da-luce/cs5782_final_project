@@ -121,6 +121,7 @@ def run_experiment(mode, dataset_name, train_samples=TRAIN_SAMPLES, val_samples=
         "training_time_sec": end_time - start_time,
         "trainable_params": param_info,
         "model_output_dir": f"./models/{mode}_{dataset_name}",
+        "log_history": trainer.state.log_history,
     }
 
     os.makedirs("./results", exist_ok=True)

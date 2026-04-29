@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Training Loss Visualization</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 0;
+            padding: 2rem;
+            background-color: #f9fafb;
+            color: #1f2937;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            margin-top: 0;
+            color: #111827;
+        }
+        .file-upload-wrapper {
+            border: 2px dashed #d1d5db;
+            padding: 2rem;
+            text-align: center;
+            border-radius: 8px;
+            background-color: #f3f4f6;
+            cursor: pointer;
+            margin-bottom: 2rem;
+            transition: background-color 0.2s;
+        }
+        .file-upload-wrapper:hover {
+            background-color: #e5e7eb;
+        }
+        .file-upload-wrapper input[type="file"] {
+            display: none;
+        }
+        .chart-container {
+            position: relative;
+            height: 500px;
+            width: 100%;
+        }
+        .metadata-box {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+            padding: 1rem;
+            background-color: #f3f4f6;
+            border-radius: 8px;
+        }
+        .metadata-item {
+            display: flex;
+            flex-direction: column;
+        }
+        .metadata-label {
+            font-size: 0.875rem;
+            color: #6b7280;
+            font-weight: 600;
+        }
+        .metadata-value {
+            font-size: 1.125rem;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Training Metrics Visualization</h1>
+    
+    <div class="file-upload-wrapper" id="drop-zone" onclick="document.getElementById('file-input').click()">
+        <p>Click to select or drag and drop a <strong>results JSON file</strong> here</p>
+        <input type="file" id="file-input" accept=".json" onchange="handleFileSelect(event)">
+    </div>
+
+    <div id="metadata-container" class="metadata-box" style="display: none;">
+        <!-- Filled via JS -->
+    </div>
+
+    <div class="chart-container" id="chart-container" style="display: none;">
+        <canvas id="lossChart"></canvas>
+    </div>
+</div>
+
+<script>
+    let chartInstance = null;
+    const dropZone = document.getElementById('drop-zone');
+
+    // Drag and drop event listeners
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.style.backgroundColor = '#e5e7eb';
+    });
+    dropZone.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        dropZone.style.backgroundColor = '#f3f4f6';
+    });
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.style.backgroundColor = '#f3f4f6';
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            processFile(e.dataTransfer.files[0]);
+        }
+    });
+
+    function handleFileSelect(event) {
+        if (event.target.files && event.target.files.length > 0) {
+            processFile(event.target.files[0]);
+        }
+    }
+
+    function processFile(file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const data = JSON.parse(e.target.result);
+                displayData(data, file.name);
+            } catch (err) {
+                alert("Error parsing JSON: " + err.message);
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    function displayData(data, filename) {
+        if (!data.log_history || !Array.isArray(data.log_history)) {
+            alert("No log_history found in the JSON file. Ensure you ran training after the update.");
+            return;
+        }
+
+        // Display Metadata
+        const metaContainer = document.getElementById('metadata-container');
+        metaContainer.innerHTML = `
+            <div class="metadata-item"><span class="metadata-label">Dataset</span><span class="metadata-value">${data.dataset || 'N/A'}</span></div>
+            <div class="metadata-item"><span class="metadata-label">Mode</span><span class="metadata-value">${data.mode || 'N/A'}</span></div>
+            <div class="metadata-item"><span class="metadata-label">Epochs</span><span class="metadata-value">${data.epochs || 'N/A'}</span></div>
+            <div class="metadata-item"><span class="metadata-label">Learning Rate</span><span class="metadata-value">${data.learning_rate || 'N/A'}</span></div>
+            <div class="metadata-item"><span class="metadata-label">Training Time</span><span class="metadata-value">${(data.training_time_sec/60).toFixed(2)} mins</span></div>
+        `;
+        metaContainer.style.display = 'grid';
+
+        // Process Log History
+        const steps = [];
+        const trainLoss = [];
+        const evalLoss = [];
+
+        data.log_history.forEach(log => {
+            if (log.loss !== undefined) {
+                steps.push(log.step);
+                trainLoss.push({ x: log.step, y: log.loss });
+            }
+            if (log.eval_loss !== undefined) {
+                evalLoss.push({ x: log.step, y: log.eval_loss });
+            }
+        });
+
+        // Unique sorted steps for x-axis if we wanted line charts properly aligned
+        const allSteps = [...new Set([...trainLoss.map(d=>d.x), ...evalLoss.map(d=>d.x)])].sort((a,b)=>a-b);
+
+        document.getElementById('chart-container').style.display = 'block';
+        renderChart(filename, trainLoss, evalLoss, allSteps);
+    }
+
+    function renderChart(title, trainLoss, evalLoss, labels) {
+        const ctx = document.getElementById('lossChart').getContext('2d');
+        
+        if (chartInstance) {
+            chartInstance.destroy();
+        }
+
+        chartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                datasets: [
+                    {
+                        label: 'Training Loss',
+                        data: trainLoss,
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.1,
+                        fill: true,
+                        spanGaps: true
+                    },
+                    {
+                        label: 'Validation Loss',
+                        data: evalLoss,
+                        borderColor: '#ef4444',
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.1,
+                        fill: false,
+                        spanGaps: true,
+                        pointBackgroundColor: '#ef4444',
+                        pointRadius: 4
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        type: 'linear',
+                        title: {
+                            display: true,
+                            text: 'Steps',
+                            font: { weight: 'bold' }
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'Loss',
+                            font: { weight: 'bold' }
+                        },
+                        beginAtZero: true
+                    }
+                },
+                plugins: {
+                    title: {
+                        display: true,
+                        text: `Loss Curve for ${title}`,
+                        font: { size: 16 }
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                    }
+                }
+            }
+        });
+    }
+</script>
+
+</body>
+</html>
