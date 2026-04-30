@@ -13,7 +13,7 @@ def get_baseline_model(num_labels: int = 2):
 def get_lora_model(
     num_labels: int = 2,
     r: int = 8,
-    lora_alpha: float = 16.0,
+    lora_alpha: float = 128.0,
     lora_dropout: float = 0.1,
 ):
     model = AutoModelForSequenceClassification.from_pretrained(
