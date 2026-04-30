@@ -203,7 +203,7 @@ def plot_lora_vs_finetune_magnitude(
 
 def plot_lora_spectral_dissimilarity(
     model,
-    layer_indices=(0, 5, 11),
+    layer_indices=(0, 5, 8, 11),
     proj_types=("query", "value"),
     n_svd=None,
     title=r"Spectral Dissimilarity  $|\cos(u_{W_0},\, u_{W_\mathrm{tuned}})|$",
@@ -261,7 +261,7 @@ def plot_lora_spectral_dissimilarity(
                 n   = n_svd if n_svd is not None else U0.shape[1]
                 sim = (U0[:, :n].T @ Ut[:, :n]).abs().cpu().numpy()   # (n, n)
 
-            im = ax.imshow(sim, cmap="inferno", vmin=0, vmax=1, aspect="auto",
+            im = ax.imshow(sim, cmap="Blues", vmin=0, vmax=1, aspect="auto",
                            interpolation="nearest")
             ax.set_title(f"Layer {li}  ·  {pt}", fontsize=10)
             ax.set_xlabel(r"$W_\mathrm{tuned}$ singular vector index", fontsize=8)
