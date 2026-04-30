@@ -201,30 +201,41 @@ def plot_lora_vs_finetune_magnitude(
     plt.show()
 
 
-def plot_lora_spectral_alignment(
+def plot_lora_spectral_dissimilarity(
     model,
     layer_indices=(0, 5, 11),
     proj_types=("query", "value"),
-    k=None,
-    epsilon=0.1,
-    title=r"LoRA Spectral Alignment  $|\cos(u_{\Delta W},\, v_{W_0})|$",
+    n_svd=None,
+    title=r"Spectral Dissimilarity  $|\cos(u_{W_0},\, u_{W_\mathrm{tuned}})|$",
 ):
     """
-    Heatmap of absolute cosine similarity between the top-r singular vectors
-    of ΔW = B·A·(α/r) and the top-k singular vectors of the frozen pretrained
-    weight W_0.  Each cell [i, j] = |u_ΔW_i · v_W0_j|.
+    Replicates the Spectral Dissimilarity Matrix from
+    "LoRA vs Full Fine-tuning: An Illusion of Equivalence" (2024).
 
-    A row that stays uniformly dark is an "Intruder Dimension": the LoRA
-    update is exploring directions the pretrained model never emphasised.
-    Rows marked ★ on the y-axis have max similarity below `epsilon`.
+    For each selected layer and projection, computes the n×n matrix of
+    absolute cosine similarities between every pair of singular vectors:
 
-    k defaults to r (the LoRA rank) so the grid is square.
+        cell [i, j] = |cos( u_W0_i ,  u_Wtuned_j )|
+
+    where  W_tuned = W0 + B·A·(α/r)  is the effective LoRA-adapted weight.
+
+    Reading the plot
+    ----------------
+    Bright diagonal  → W_tuned preserves the singular structure of W0.
+    Off-diagonal streak in the top-r rows/cols → the rank-r LoRA perturbation
+        has rotated those principal directions ("Intruder Dimensions").
+    The rest of the matrix should look like a near-identity diagonal because
+        the rank-8 perturbation leaves 760/768 singular vectors almost intact.
+
+    n_svd : int or None
+        Number of top singular vectors to compare (truncates both axes).
+        None = full rank (768 for RoBERTa-base, produces a 768×768 heatmap).
     """
     lora_layers = _get_lora_layers(model)
 
     fig, axes = plt.subplots(
         len(proj_types), len(layer_indices),
-        figsize=(4 * len(layer_indices), 3.5 * len(proj_types)),
+        figsize=(6 * len(layer_indices), 5 * len(proj_types)),
         squeeze=False,
     )
     fig.suptitle(title, fontsize=13, fontweight="bold")
@@ -232,45 +243,30 @@ def plot_lora_spectral_alignment(
     for row, pt in enumerate(proj_types):
         for col, li in enumerate(layer_indices):
             key = f"roberta.encoder.layer.{li}.attention.self.{pt}"
-            ax = axes[row, col]
+            ax  = axes[row, col]
 
             if key not in lora_layers:
                 ax.axis("off")
                 continue
 
             m = lora_layers[key]
-            r = m.r
-            _k = k if k is not None else r
 
             with torch.no_grad():
-                W_pre   = m.original.weight.float()
-                delta_W = (m.lora_B @ m.lora_A * m.scaling).float()
+                W0      = m.original.weight.float()                    # (d_out, d_in)
+                W_tuned = W0 + m.lora_B @ m.lora_A * m.scaling        # same shape
 
-                U_base, _, _ = torch.linalg.svd(W_pre,   full_matrices=False)
-                U_lora, _, _ = torch.linalg.svd(delta_W, full_matrices=False)
+                U0, _, _ = torch.linalg.svd(W0,      full_matrices=False)  # (d_out, k)
+                Ut, _, _ = torch.linalg.svd(W_tuned, full_matrices=False)
 
-                U_base = U_base[:, :_k]           # (d_out, k)
-                U_lora = U_lora[:, :r]            # (d_out, r)
-                sim    = (U_lora.T @ U_base).abs().cpu().numpy()  # (r, k)
+                n   = n_svd if n_svd is not None else U0.shape[1]
+                sim = (U0[:, :n].T @ Ut[:, :n]).abs().cpu().numpy()   # (n, n)
 
-            intruder_mask = sim.max(axis=1) < epsilon
-            n_intruders   = intruder_mask.sum()
-
-            im = ax.imshow(sim, cmap="inferno", vmin=0, vmax=1, aspect="auto")
-            ax.set_title(
-                f"Layer {li}  ·  {pt}\nIntruders: {n_intruders}/{r}  (ε={epsilon})",
-                fontsize=9,
-            )
-            ax.set_xlabel(f"Top-{_k}  $W_0$ directions", fontsize=8)
+            im = ax.imshow(sim, cmap="inferno", vmin=0, vmax=1, aspect="auto",
+                           interpolation="nearest")
+            ax.set_title(f"Layer {li}  ·  {pt}", fontsize=10)
+            ax.set_xlabel(r"$W_\mathrm{tuned}$ singular vector index", fontsize=8)
             if col == 0:
-                ax.set_ylabel(f"Top-{r}  $\\Delta W$ directions", fontsize=8)
-            ax.set_xticks(range(_k))
-            ax.set_xticklabels(range(_k), fontsize=6)
-            ax.set_yticks(range(r))
-            ax.set_yticklabels(
-                [f"{i}★" if intruder_mask[i] else str(i) for i in range(r)],
-                fontsize=6,
-            )
+                ax.set_ylabel(r"$W_0$ singular vector index", fontsize=8)
             plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
 
     plt.tight_layout()
