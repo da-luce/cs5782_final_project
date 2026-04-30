@@ -213,6 +213,68 @@ def plot_lora_vs_finetune_magnitude(
     plt.show()
 
 
+def plot_combined_magnitude(
+    datasets,
+    proj_types=("query", "value"),
+    title=r"LoRA vs Full Fine-Tune: $\|\Delta W\|_F$ per Layer",
+):
+    """
+    Plots LoRA and full fine-tune update magnitudes side-by-side for multiple
+    datasets, sharing the same y-axis scale so magnitudes are directly comparable.
+
+    Parameters
+    ----------
+    datasets : dict[str, tuple]
+        Mapping of dataset_name -> (lora_model, pretrained_model, finetuned_model)
+    """
+    dataset_names = list(datasets.keys())
+    ncols = len(dataset_names)
+
+    # Collect all norms first so we can find the global y-axis limits
+    all_norms = {}
+    for name, (lora_model, pretrained_model, finetuned_model) in datasets.items():
+        li_lora, norms_lora = _lora_layer_norms(lora_model, proj_types)
+        li_ft,   norms_ft   = _finetune_layer_norms(pretrained_model, finetuned_model, proj_types)
+        all_norms[name] = (li_lora, norms_lora, li_ft, norms_ft)
+
+    all_values = [
+        v
+        for li_lora, norms_lora, li_ft, norms_ft in all_norms.values()
+        for norms in (norms_lora, norms_ft)
+        for vals in norms.values()
+        for v in vals
+        if not (isinstance(v, float) and v != v)  # skip NaN
+    ]
+    y_max = max(all_values) * 1.1 if all_values else 1.0
+
+    colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+
+    fig, axes = plt.subplots(1, ncols, figsize=(6 * ncols, 5), sharey=True)
+    if ncols == 1:
+        axes = [axes]
+
+    fig.suptitle(title, fontsize=13, fontweight="bold")
+
+    for ax, name in zip(axes, dataset_names):
+        li_lora, norms_lora, li_ft, norms_ft = all_norms[name]
+        for i, pt in enumerate(proj_types):
+            c = colors[i % len(colors)]
+            ax.plot(li_ft,   norms_ft[pt],   marker="o",  color=c, linestyle="-",  label=f"{pt} (fine-tune)")
+            ax.plot(li_lora, norms_lora[pt], marker="s",  color=c, linestyle="--", label=f"{pt} (LoRA)")
+
+        ax.set_title(name.upper(), fontsize=12)
+        ax.set_xlabel("Transformer Layer", fontsize=11)
+        if ax is axes[0]:
+            ax.set_ylabel(r"Frobenius Norm  $\|\Delta W\|_F$", fontsize=11)
+        ax.set_xticks(li_ft)
+        ax.set_ylim(0, y_max)
+        ax.legend(title="Projection · Method", fontsize=8)
+        ax.grid(True, linestyle="--", alpha=0.5)
+
+    plt.tight_layout()
+    plt.show()
+
+
 def plot_lora_bottleneck(
     model,
     layer_index=5,
