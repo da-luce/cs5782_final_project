@@ -14,3 +14,6 @@ models/
 *.fls
 *.fdb_latexmk
 *.synctex.gz
+
+# Misc
+.DS_Store
