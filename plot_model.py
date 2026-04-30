@@ -57,6 +57,49 @@ def plot_lora_heatmaps(
     plt.show()
 
 
+def plot_layer_update_magnitude(
+    model,
+    proj_types=("query", "value"),
+    title=r"Layer-wise LoRA Update Magnitude ($\|\Delta W\|_F$)",
+):
+    """
+    Plots the Frobenius norm of ΔW = B·A·(α/r) for every transformer layer,
+    showing how update magnitude varies with depth.
+    """
+    lora_layers = _get_lora_layers(model)
+
+    layer_indices = sorted({
+        int(n.split(".layer.")[1].split(".")[0])
+        for n in lora_layers
+        if ".layer." in n
+    })
+
+    norms = {pt: [] for pt in proj_types}
+    for li in layer_indices:
+        for pt in proj_types:
+            key = f"roberta.encoder.layer.{li}.attention.self.{pt}"
+            if key not in lora_layers:
+                norms[pt].append(float("nan"))
+                continue
+            m = lora_layers[key]
+            with torch.no_grad():
+                delta_W = m.lora_B @ m.lora_A * m.scaling
+                norms[pt].append(torch.norm(delta_W, p="fro").item())
+
+    fig, ax = plt.subplots(figsize=(10, 5))
+    for pt in proj_types:
+        ax.plot(layer_indices, norms[pt], marker="o", label=pt)
+
+    ax.set_title(title, fontsize=13, fontweight="bold")
+    ax.set_xlabel("Transformer Layer", fontsize=11)
+    ax.set_ylabel(r"Frobenius Norm  $\|\Delta W\|_F$", fontsize=11)
+    ax.set_xticks(layer_indices)
+    ax.legend(title="Projection")
+    ax.grid(True, linestyle="--", alpha=0.5)
+    plt.tight_layout()
+    plt.show()
+
+
 def plot_lora_bottleneck(
     model,
     layer_index=5,
