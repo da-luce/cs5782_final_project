@@ -205,36 +205,37 @@ def plot_lora_spectral_dissimilarity(
     model,
     layer_indices=(0, 5, 11),
     proj_types=("query", "value"),
-    n_base=64,
-    title=r"Spectral Dissimilarity  $|\cos(u_{W_0},\, u_{\Delta W})|$",
+    n_svd=None,
+    title=r"Spectral Dissimilarity  $|\cos(u_{W_0},\, u_{W_\mathrm{tuned}})|$",
 ):
     """
-    Spectral Dissimilarity Matrix comparing W0 (pretrained) directly against
-    ΔW = B·A·(α/r) (the adapter alone, not W0 + ΔW).
+    Replicates the Spectral Dissimilarity Matrix from
+    "LoRA vs Full Fine-tuning: An Illusion of Equivalence" (2024).
 
-    Comparing against the merged weight W0 + ΔW is dominated by W0 because
-    ||ΔW|| << ||W0||, making every layer look like a perfect diagonal.
-    Comparing W0 against ΔW in isolation reveals the true spectral relationship.
+    For each selected layer and projection, computes the n×n matrix of
+    absolute cosine similarities between every pair of singular vectors:
 
-        cell [i, j] = |cos( u_W0_i ,  u_ΔW_j )|
+        cell [i, j] = |cos( u_W0_i ,  u_Wtuned_j )|
 
-    Y-axis : top-n_base singular vectors of W0  (the model's principal directions)
-    X-axis : top-r singular vectors of ΔW       (r = LoRA rank, e.g. 8)
+    where  W_tuned = W0 + B·A·(α/r)  is the effective LoRA-adapted weight.
 
-    Interpreting the result
-    -----------------------
-    Bright cell in row i, col j → the j-th LoRA direction aligns with the
-        i-th principal direction of W0 ("updating existing knowledge").
-    Dark column j              → that LoRA direction has no match among W0's
-        top directions — an Intruder Dimension.
-    Brightness concentrated in top rows → LoRA targets the most-used features.
-    Brightness scattered in low rows    → LoRA explores underused feature space.
+    Reading the plot
+    ----------------
+    Bright diagonal  → W_tuned preserves the singular structure of W0.
+    Off-diagonal streak in the top-r rows/cols → the rank-r LoRA perturbation
+        has rotated those principal directions ("Intruder Dimensions").
+    The rest of the matrix should look like a near-identity diagonal because
+        the rank-8 perturbation leaves 760/768 singular vectors almost intact.
+
+    n_svd : int or None
+        Number of top singular vectors to compare (truncates both axes).
+        None = full rank (768 for RoBERTa-base, produces a 768×768 heatmap).
     """
     lora_layers = _get_lora_layers(model)
 
     fig, axes = plt.subplots(
         len(proj_types), len(layer_indices),
-        figsize=(3 * len(layer_indices), 4 * len(proj_types)),
+        figsize=(6 * len(layer_indices), 5 * len(proj_types)),
         squeeze=False,
     )
     fig.suptitle(title, fontsize=13, fontweight="bold")
@@ -249,27 +250,23 @@ def plot_lora_spectral_dissimilarity(
                 continue
 
             m = lora_layers[key]
-            r = m.r
 
             with torch.no_grad():
-                W0      = m.original.weight.float()
-                delta_W = (m.lora_B @ m.lora_A * m.scaling).float()
+                W0      = m.original.weight.float()                    # (d_out, d_in)
+                W_tuned = W0 + m.lora_B @ m.lora_A * m.scaling        # same shape
 
-                U0,  _, _ = torch.linalg.svd(W0,      full_matrices=False)
-                U_dW, _, _ = torch.linalg.svd(delta_W, full_matrices=False)
+                U0, _, _ = torch.linalg.svd(W0,      full_matrices=False)  # (d_out, k)
+                Ut, _, _ = torch.linalg.svd(W_tuned, full_matrices=False)
 
-                U0   = U0[:,   :n_base]   # (d_out, n_base)  — W0 principal dirs
-                U_dW = U_dW[:, :r]        # (d_out, r)        — LoRA update dirs
-
-                sim  = (U0.T @ U_dW).abs().cpu().numpy()  # (n_base, r)
+                n   = n_svd if n_svd is not None else U0.shape[1]
+                sim = (U0[:, :n].T @ Ut[:, :n]).abs().cpu().numpy()   # (n, n)
 
             im = ax.imshow(sim, cmap="inferno", vmin=0, vmax=1, aspect="auto",
                            interpolation="nearest")
             ax.set_title(f"Layer {li}  ·  {pt}", fontsize=10)
-            ax.set_xlabel(r"$\Delta W$ direction index", fontsize=8)
+            ax.set_xlabel(r"$W_\mathrm{tuned}$ singular vector index", fontsize=8)
             if col == 0:
-                ax.set_ylabel(r"$W_0$ direction index", fontsize=8)
-            ax.set_xticks(range(r))
+                ax.set_ylabel(r"$W_0$ singular vector index", fontsize=8)
             plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
 
     plt.tight_layout()
