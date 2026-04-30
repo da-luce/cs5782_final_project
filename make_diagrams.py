@@ -14,13 +14,16 @@ MODE_LABELS = {"baseline": "Baseline", "lora": "LoRA", "finetune": "Full Fine-tu
 MODE_COLORS = {"baseline": "#4878d0", "lora": "#ee854a", "finetune": "#6acc65"}
 
 
-def load_results(results_dir):
+def load_results(results_dir, lora_rank=8):
     data = {}
     for path in glob.glob(os.path.join(results_dir, "*.json")):
         with open(path) as f:
             result = json.load(f)
         mode = result["metadata"]["mode"]
         dataset = result["metadata"]["dataset"]
+        if mode == "lora":
+            if result["metadata"].get("r", 8) != lora_rank:
+                continue
         data[(mode, dataset)] = result
     return data
 
@@ -143,12 +146,14 @@ def main():
     parser.add_argument("results_dir", help="Directory containing result JSON files")
     parser.add_argument("--out_dir", default=None,
                         help="Output directory for diagrams (default: results_dir)")
+    parser.add_argument("--lora_rank", type=int, default=8,
+                        help="Which LoRA rank file to use for the standard comparison charts (default: 8)")
     args = parser.parse_args()
 
     out_dir = args.out_dir or args.results_dir
     os.makedirs(out_dir, exist_ok=True)
 
-    results = load_results(args.results_dir)
+    results = load_results(args.results_dir, lora_rank=args.lora_rank)
     if not results:
         print(f"No JSON files found in {args.results_dir}")
         return
