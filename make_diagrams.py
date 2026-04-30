@@ -28,6 +28,28 @@ def load_results(results_dir, lora_rank=8):
     return data
 
 
+def load_lora_ranks(results_dir):
+    """Group every lora_*_r*.json by dataset, sorted by rank."""
+    by_dataset = {}
+    for path in glob.glob(os.path.join(results_dir, "lora_*_r*.json")):
+        with open(path) as f:
+            result = json.load(f)
+        dataset = result["metadata"]["dataset"]
+        rank = result["metadata"]["r"]
+        by_dataset.setdefault(dataset, []).append((rank, result))
+    for ds in by_dataset:
+        by_dataset[ds].sort(key=lambda x: x[0])
+    return by_dataset
+
+
+def fmt_params(n):
+    if n >= 1_000_000:
+        return f"{n / 1e6:.2f}M"
+    if n >= 1_000:
+        return f"{n / 1e3:.0f}K"
+    return f"{n}"
+
+
 def get_datasets(data):
     return sorted({dataset for _, dataset in data.keys()})
 
@@ -141,6 +163,84 @@ def loss_plots(results, out_dir):
         print(f"Saved {path}")
 
 
+def rank_ablation_plot(results_dir, out_dir, baselines=None):
+    """Plot LoRA validation accuracy vs. rank, one panel per dataset.
+
+    Reads every lora_<dataset>_r<rank>.json in results_dir; if baselines is
+    given (the standard load_results dict), draws zero-shot and full-FT
+    horizontal reference lines per panel.
+    """
+    by_dataset = load_lora_ranks(results_dir)
+    if not by_dataset:
+        return
+
+    datasets = sorted(by_dataset.keys())
+    ncols = len(datasets)
+    fig, axes = plt.subplots(1, ncols, figsize=(6 * ncols, 5), sharey=False)
+    if ncols == 1:
+        axes = [axes]
+
+    fig.suptitle("LoRA accuracy vs. rank", fontsize=13)
+
+    for ax, dataset in zip(axes, datasets):
+        ranks = [r for r, _ in by_dataset[dataset]]
+        accs = [d["eval"]["results"]["eval_accuracy"] * 100 for _, d in by_dataset[dataset]]
+        params = [d["model"]["trainable"] for _, d in by_dataset[dataset]]
+
+        refs = []
+        if baselines:
+            for ref_mode, ref_label, style in [
+                ("baseline", "Zero-shot", ":"),
+                ("finetune", "Full FT", "--"),
+            ]:
+                entry = baselines.get((ref_mode, dataset))
+                if entry is None:
+                    continue
+                val = entry["eval"]["results"]["eval_accuracy"] * 100
+                color = MODE_COLORS[ref_mode]
+                ax.axhline(val, color=color, linestyle=style, linewidth=1.6,
+                           alpha=0.8, zorder=2)
+                refs.append((ref_label, val, color))
+
+        ax.plot(ranks, accs, color=MODE_COLORS["lora"], linewidth=2.5, zorder=3)
+        ax.scatter(ranks, accs, s=160, color=MODE_COLORS["lora"],
+                   edgecolors="black", linewidth=1.4, zorder=4,
+                   label=MODE_LABELS["lora"])
+
+        for r, acc, n in zip(ranks, accs, params):
+            ax.annotate(f"{acc:.1f}%\n{fmt_params(n)}",
+                        xy=(r, acc), xytext=(0, -28),
+                        textcoords="offset points",
+                        fontsize=9, ha="center", va="top", color="#374151")
+
+        ax.set_xscale("log", base=2)
+        ax.set_xticks(ranks)
+        ax.set_xticklabels([str(r) for r in ranks])
+        ax.set_xlabel("LoRA rank r (log₂)")
+        ax.set_ylabel("Validation accuracy (%)")
+        ax.set_title(dataset.upper())
+        ax.grid(True, which="major", alpha=0.35, zorder=1)
+
+        all_y = list(accs) + [v for _, v, _ in refs]
+        span = max(all_y) - min(all_y)
+        pad_top = max(3.0, 0.05 * span + 1.0)
+        pad_bot = max(6.0, 0.18 * span + 3.0)
+        ax.set_ylim(max(0, min(all_y) - pad_bot), min(100, max(accs) + pad_top))
+
+        ref_y = 0.04
+        for ref_label, val, color in refs:
+            ax.text(0.98, ref_y, f"{ref_label}: {val:.1f}%",
+                    transform=ax.transAxes, ha="right", va="bottom",
+                    color=color, fontsize=9, fontweight="bold", fontstyle="italic")
+            ref_y += 0.05
+
+    fig.tight_layout()
+    path = os.path.join(out_dir, "rank_ablation.png")
+    fig.savefig(path, dpi=150)
+    plt.close(fig)
+    print(f"Saved {path}")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Generate diagrams from result JSON files.")
     parser.add_argument("results_dir", help="Directory containing result JSON files")
@@ -190,6 +290,8 @@ def main():
     )
 
     loss_plots(results, out_dir)
+
+    rank_ablation_plot(args.results_dir, out_dir, baselines=results)
 
 
 if __name__ == "__main__":
