@@ -1,0 +1,34 @@
+{
+    "metadata": {
+        "mode": "finetune",
+        "dataset": "sst2",
+        "device": "cuda"
+    },
+    "model": {
+        "total": 124647170,
+        "trainable": 124647170,
+        "frozen": 0,
+        "trainable_pct": 100.0
+    },
+    "training": {
+        "executed": true,
+        "samples": 5000,
+        "epochs": 5,
+        "learning_rate": 2e-05,
+        "batch_size": 8,
+        "time_sec": 83.69075393676758,
+        "model_output_dir": "./models/finetune_sst2"
+    },
+    "eval": {
+        "samples": 500,
+        "time_sec": 0.5281233787536621,
+        "results": {
+            "eval_loss": 0.48986101150512695,
+            "eval_accuracy": 0.932,
+            "eval_runtime": 0.5264,
+            "eval_samples_per_second": 949.858,
+            "eval_steps_per_second": 119.682,
+            "epoch": 5.0
+        }
+    }
+}

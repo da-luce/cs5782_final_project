@@ -1,0 +1,34 @@
+{
+    "metadata": {
+        "mode": "lora",
+        "dataset": "sst2",
+        "device": "cuda"
+    },
+    "model": {
+        "total": 124942082,
+        "trainable": 887042,
+        "frozen": 124055040,
+        "trainable_pct": 0.71
+    },
+    "training": {
+        "executed": true,
+        "samples": 5000,
+        "epochs": 5,
+        "learning_rate": 0.0002,
+        "batch_size": 8,
+        "time_sec": 61.06299090385437,
+        "model_output_dir": "./models/lora_sst2"
+    },
+    "eval": {
+        "samples": 500,
+        "time_sec": 0.5723154544830322,
+        "results": {
+            "eval_loss": 0.23801353573799133,
+            "eval_accuracy": 0.938,
+            "eval_runtime": 0.5706,
+            "eval_samples_per_second": 876.292,
+            "eval_steps_per_second": 110.413,
+            "epoch": 5.0
+        }
+    }
+}

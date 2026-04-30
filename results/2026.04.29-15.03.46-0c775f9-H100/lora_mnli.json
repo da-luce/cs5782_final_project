@@ -1,0 +1,104 @@
+{
+    "metadata": {
+        "mode": "lora",
+        "dataset": "mnli",
+        "device": "cuda"
+    },
+    "model": {
+        "total": 124942851,
+        "trainable": 887811,
+        "frozen": 124055040,
+        "trainable_pct": 0.7106
+    },
+    "training": {
+        "executed": true,
+        "samples": 50000,
+        "epochs": 3,
+        "learning_rate": 0.0002,
+        "batch_size": 8,
+        "time_sec": 418.43377685546875,
+        "peak_memory_mb": 1045.17919921875,
+        "checkpoint_size_mb": 476.6545457839966,
+        "log_history": [
+            {
+                "loss": 0.6196,
+                "grad_norm": 10.198565483093262,
+                "learning_rate": 0.000133344,
+                "epoch": 1.0,
+                "step": 6250
+            },
+            {
+                "eval_loss": 0.5436999797821045,
+                "eval_accuracy": 0.803,
+                "eval_runtime": 5.7879,
+                "eval_samples_per_second": 863.868,
+                "eval_steps_per_second": 107.984,
+                "epoch": 1.0,
+                "step": 6250
+            },
+            {
+                "loss": 0.4884,
+                "grad_norm": 4.845332145690918,
+                "learning_rate": 6.667733333333333e-05,
+                "epoch": 2.0,
+                "step": 12500
+            },
+            {
+                "eval_loss": 0.4430675208568573,
+                "eval_accuracy": 0.8322,
+                "eval_runtime": 5.751,
+                "eval_samples_per_second": 869.413,
+                "eval_steps_per_second": 108.677,
+                "epoch": 2.0,
+                "step": 12500
+            },
+            {
+                "loss": 0.447,
+                "grad_norm": 9.804129600524902,
+                "learning_rate": 1.0666666666666668e-08,
+                "epoch": 3.0,
+                "step": 18750
+            },
+            {
+                "eval_loss": 0.4440709054470062,
+                "eval_accuracy": 0.8416,
+                "eval_runtime": 5.7781,
+                "eval_samples_per_second": 865.333,
+                "eval_steps_per_second": 108.167,
+                "epoch": 3.0,
+                "step": 18750
+            },
+            {
+                "train_runtime": 418.1453,
+                "train_samples_per_second": 358.727,
+                "train_steps_per_second": 44.841,
+                "total_flos": 9900727027200000.0,
+                "train_loss": 0.5183183854166666,
+                "epoch": 3.0,
+                "step": 18750
+            },
+            {
+                "eval_loss": 0.4440709054470062,
+                "eval_accuracy": 0.8416,
+                "eval_runtime": 5.7757,
+                "eval_samples_per_second": 865.696,
+                "eval_steps_per_second": 108.212,
+                "epoch": 3.0,
+                "step": 18750
+            }
+        ],
+        "model_output_dir": "./models/lora_mnli"
+    },
+    "eval": {
+        "samples": 5000,
+        "time_sec": 5.778028249740601,
+        "results": {
+            "eval_loss": 0.4440709054470062,
+            "eval_accuracy": 0.8416,
+            "eval_runtime": 5.7757,
+            "eval_samples_per_second": 865.696,
+            "eval_steps_per_second": 108.212,
+            "epoch": 3.0
+        }
+    }
+}

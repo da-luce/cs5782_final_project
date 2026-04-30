@@ -1,0 +1,33 @@
+{
+    "metadata": {
+        "mode": "baseline",
+        "dataset": "mnli",
+        "device": "cuda"
+    },
+    "model": {
+        "total": 124647939,
+        "trainable": 124647939,
+        "frozen": 0,
+        "trainable_pct": 100.0
+    },
+    "training": {
+        "executed": false,
+        "samples": 0,
+        "epochs": 0,
+        "learning_rate": 0.0,
+        "batch_size": 8,
+        "time_sec": 0.0
+    },
+    "eval": {
+        "samples": 500,
+        "time_sec": 0.6584835052490234,
+        "results": {
+            "eval_loss": 1.1041053533554077,
+            "eval_model_preparation_time": 0.0012,
+            "eval_accuracy": 0.302,
+            "eval_runtime": 0.6534,
+            "eval_samples_per_second": 765.277,
+            "eval_steps_per_second": 96.425
+        }
+    }
+}
