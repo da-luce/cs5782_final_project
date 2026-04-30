@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.colors import LinearSegmentedColormap
+from matplotlib.colors import LinearSegmentedColormap, LogNorm
 
 def _get_lora_layers(model):
     return {n: m for n, m in model.named_modules() if type(m).__name__ == "LoRALinear"}
@@ -261,8 +261,9 @@ def plot_lora_spectral_dissimilarity(
                 n   = n_svd if n_svd is not None else U0.shape[1]
                 sim = (U0[:, :n].T @ Ut[:, :n]).abs().cpu().numpy()   # (n, n)
 
-            im = ax.imshow(sim, cmap="Blues", vmin=0, vmax=1, aspect="auto",
-                           interpolation="nearest")
+            sim = np.clip(sim, 1e-4, 1.0)   # LogNorm requires strictly positive values
+            im = ax.imshow(sim, cmap="Blues", norm=LogNorm(vmin=1e-4, vmax=1.0),
+                           aspect="auto", interpolation="nearest")
             ax.set_title(f"Layer {li}  ·  {pt}", fontsize=10)
             ax.set_xlabel(r"$W_\mathrm{tuned}$ singular vector index", fontsize=8)
             if col == 0:
