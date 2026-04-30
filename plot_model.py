@@ -201,75 +201,78 @@ def plot_lora_vs_finetune_magnitude(
     plt.show()
 
 
-def plot_lora_subspace_similarity(
+def plot_lora_spectral_alignment(
     model,
+    layer_indices=(0, 5, 11),
     proj_types=("query", "value"),
-    title=r"LoRA Subspace Alignment with Pretrained $W$",
+    k=None,
+    epsilon=0.1,
+    title=r"LoRA Spectral Alignment  $|\cos(u_{\Delta W},\, v_{W_0})|$",
 ):
     """
-    For each layer, measures how much the LoRA update subspace (top-r left
-    singular vectors of ΔW) aligns with the pretrained weight subspace (top-r
-    left singular vectors of W_pre).
+    Heatmap of absolute cosine similarity between the top-r singular vectors
+    of ΔW = B·A·(α/r) and the top-k singular vectors of the frozen pretrained
+    weight W_0.  Each cell [i, j] = |u_ΔW_i · v_W0_j|.
 
-    Score = ||U_W[:, :r]ᵀ U_ΔW[:, :r]||_F² / r
-      → 1.0: LoRA refines the model's most-used directions
-      → 0.0: LoRA explores directions the pretrained model never used
+    A row that stays uniformly dark is an "Intruder Dimension": the LoRA
+    update is exploring directions the pretrained model never emphasised.
+    Rows marked ★ on the y-axis have max similarity below `epsilon`.
 
-    A horizontal reference line marks the expected score for a random rank-r
-    update: r / d_out ≈ 0.01 for RoBERTa-base with r=8.
+    k defaults to r (the LoRA rank) so the grid is square.
     """
     lora_layers = _get_lora_layers(model)
 
-    layer_indices = sorted({
-        int(n.split(".layer.")[1].split(".")[0])
-        for n in lora_layers if ".layer." in n
-    })
+    fig, axes = plt.subplots(
+        len(proj_types), len(layer_indices),
+        figsize=(4 * len(layer_indices), 3.5 * len(proj_types)),
+        squeeze=False,
+    )
+    fig.suptitle(title, fontsize=13, fontweight="bold")
 
-    similarities = {pt: [] for pt in proj_types}
-    r_val, d_out_val = None, None
-
-    for li in layer_indices:
-        for pt in proj_types:
+    for row, pt in enumerate(proj_types):
+        for col, li in enumerate(layer_indices):
             key = f"roberta.encoder.layer.{li}.attention.self.{pt}"
+            ax = axes[row, col]
+
             if key not in lora_layers:
-                similarities[pt].append(float("nan"))
+                ax.axis("off")
                 continue
+
             m = lora_layers[key]
-            r_val    = m.r
-            d_out_val = m.original.weight.shape[0]
+            r = m.r
+            _k = k if k is not None else r
 
             with torch.no_grad():
                 W_pre   = m.original.weight.float()
                 delta_W = (m.lora_B @ m.lora_A * m.scaling).float()
 
-                U_W,  _, _ = torch.linalg.svd(W_pre,   full_matrices=False)
-                U_dW, _, _ = torch.linalg.svd(delta_W, full_matrices=False)
+                U_base, _, _ = torch.linalg.svd(W_pre,   full_matrices=False)
+                U_lora, _, _ = torch.linalg.svd(delta_W, full_matrices=False)
 
-                U_W  = U_W[:,  :r_val]   # top-r directions of W_pre
-                U_dW = U_dW[:, :r_val]   # top-r directions of ΔW
+                U_base = U_base[:, :_k]           # (d_out, k)
+                U_lora = U_lora[:, :r]            # (d_out, r)
+                sim    = (U_lora.T @ U_base).abs().cpu().numpy()  # (r, k)
 
-                sim = (U_W.T @ U_dW).pow(2).sum().item() / r_val
+            intruder_mask = sim.max(axis=1) < epsilon
+            n_intruders   = intruder_mask.sum()
 
-            similarities[pt].append(sim)
+            im = ax.imshow(sim, cmap="inferno", vmin=0, vmax=1, aspect="auto")
+            ax.set_title(
+                f"Layer {li}  ·  {pt}\nIntruders: {n_intruders}/{r}  (ε={epsilon})",
+                fontsize=9,
+            )
+            ax.set_xlabel(f"Top-{_k}  $W_0$ directions", fontsize=8)
+            if col == 0:
+                ax.set_ylabel(f"Top-{r}  $\\Delta W$ directions", fontsize=8)
+            ax.set_xticks(range(_k))
+            ax.set_xticklabels(range(_k), fontsize=6)
+            ax.set_yticks(range(r))
+            ax.set_yticklabels(
+                [f"{i}★" if intruder_mask[i] else str(i) for i in range(r)],
+                fontsize=6,
+            )
+            plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
 
-    fig, ax = plt.subplots(figsize=(10, 5))
-    for pt in proj_types:
-        ax.plot(layer_indices, similarities[pt], marker="o", label=pt)
-
-    if r_val is not None and d_out_val is not None:
-        baseline = r_val / d_out_val
-        ax.axhline(
-            baseline, color="gray", linestyle=":", alpha=0.8,
-            label=f"random baseline  (r/d = {baseline:.3f})",
-        )
-
-    ax.set_title(title, fontsize=13, fontweight="bold")
-    ax.set_xlabel("Transformer Layer", fontsize=11)
-    ax.set_ylabel("Subspace Similarity", fontsize=11)
-    ax.set_xticks(layer_indices)
-    ax.set_ylim(0, 1)
-    ax.legend()
-    ax.grid(True, linestyle="--", alpha=0.5)
     plt.tight_layout()
     plt.show()
 
