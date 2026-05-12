@@ -12,17 +12,43 @@ import numpy as np
 MODE_ORDER = ["baseline", "lora", "finetune"]
 MODE_LABELS = {"baseline": "Baseline", "lora": "LoRA", "finetune": "Full Fine-tune"}
 MODE_COLORS = {"baseline": "#4878d0", "lora": "#ee854a", "finetune": "#6acc65"}
+DATASET_LABELS = {"sst2": "SST-2", "mnli": "MNLI"}
 
 
-def load_results(results_dir):
+def load_results(results_dir, lora_rank=8):
     data = {}
     for path in glob.glob(os.path.join(results_dir, "*.json")):
         with open(path) as f:
             result = json.load(f)
         mode = result["metadata"]["mode"]
         dataset = result["metadata"]["dataset"]
+        if mode == "lora":
+            if result["metadata"].get("r", 8) != lora_rank:
+                continue
         data[(mode, dataset)] = result
     return data
+
+
+def load_lora_ranks(results_dir):
+    """Group every lora_*_r*.json by dataset, sorted by rank."""
+    by_dataset = {}
+    for path in glob.glob(os.path.join(results_dir, "lora_*_r*.json")):
+        with open(path) as f:
+            result = json.load(f)
+        dataset = result["metadata"]["dataset"]
+        rank = result["metadata"]["r"]
+        by_dataset.setdefault(dataset, []).append((rank, result))
+    for ds in by_dataset:
+        by_dataset[ds].sort(key=lambda x: x[0])
+    return by_dataset
+
+
+def fmt_params(n):
+    if n >= 1_000_000:
+        return f"{n / 1e6:.2f}M"
+    if n >= 1_000:
+        return f"{n / 1e3:.0f}K"
+    return f"{n}"
 
 
 def get_datasets(data):
@@ -138,17 +164,70 @@ def loss_plots(results, out_dir):
         print(f"Saved {path}")
 
 
+def rank_ablation_plot(results_dir, out_dir):
+    """Plot LoRA validation accuracy vs. rank, one panel per dataset.
+
+    Reads every lora_<dataset>_r<rank>.json in results_dir.
+    """
+    by_dataset = load_lora_ranks(results_dir)
+    if not by_dataset:
+        return
+
+    datasets = sorted(by_dataset.keys())
+    ncols = len(datasets)
+    fig, axes = plt.subplots(1, ncols, figsize=(6 * ncols, 5), sharey=False)
+    if ncols == 1:
+        axes = [axes]
+
+    fig.suptitle("LoRA Accuracy vs. Rank", fontsize=13)
+
+    for ax, dataset in zip(axes, datasets):
+        ranks = [r for r, _ in by_dataset[dataset]]
+        accs = [d["eval"]["results"]["eval_accuracy"] * 100 for _, d in by_dataset[dataset]]
+        params = [d["model"]["trainable"] for _, d in by_dataset[dataset]]
+
+        ax.plot(ranks, accs, color=MODE_COLORS["lora"], linewidth=2.5, zorder=3)
+        ax.scatter(ranks, accs, s=160, color=MODE_COLORS["lora"],
+                   edgecolors="black", linewidth=1.4, zorder=4,
+                   label=MODE_LABELS["lora"])
+
+        for r, acc, n in zip(ranks, accs, params):
+            ax.annotate(f"{acc:.1f}%\n{fmt_params(n)} params",
+                        xy=(r, acc), xytext=(0, -14),
+                        textcoords="offset points",
+                        fontsize=8.5, ha="center", va="top",
+                        color="#374151", linespacing=1.2)
+
+        ax.set_xscale("log", base=2)
+        ax.set_xticks(ranks)
+        ax.set_xticklabels([str(r) for r in ranks])
+        ax.set_xlabel("LoRA Rank r (log₂)")
+        ax.set_ylabel("Validation Accuracy (%)")
+        ax.set_title(DATASET_LABELS.get(dataset, dataset.upper()))
+        ax.grid(True, which="major", alpha=0.35, zorder=1)
+
+        ax.set_ylim(0, 100)
+
+    fig.tight_layout()
+    path = os.path.join(out_dir, "rank_ablation.png")
+    fig.savefig(path, dpi=150)
+    plt.close(fig)
+    print(f"Saved {path}")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Generate diagrams from result JSON files.")
     parser.add_argument("results_dir", help="Directory containing result JSON files")
     parser.add_argument("--out_dir", default=None,
                         help="Output directory for diagrams (default: results_dir)")
+    parser.add_argument("--lora_rank", type=int, default=8,
+                        help="Which LoRA rank file to use for the standard comparison charts (default: 8)")
     args = parser.parse_args()
 
     out_dir = args.out_dir or args.results_dir
     os.makedirs(out_dir, exist_ok=True)
 
-    results = load_results(args.results_dir)
+    results = load_results(args.results_dir, lora_rank=args.lora_rank)
     if not results:
         print(f"No JSON files found in {args.results_dir}")
         return
@@ -185,6 +264,8 @@ def main():
     )
 
     loss_plots(results, out_dir)
+
+    rank_ablation_plot(args.results_dir, out_dir)
 
 
 if __name__ == "__main__":

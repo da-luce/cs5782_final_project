@@ -15,6 +15,7 @@ from lora import count_parameters
 TRAIN_SAMPLES = 5000
 VAL_SAMPLES = 500
 EPOCHS = 5
+LORA_RANK = 8
 
 DATASET_CONFIG = {
     # sst2: binary sentiment classification
@@ -59,7 +60,7 @@ def get_device():
     return "cpu"
 
 
-def run_experiment(mode, dataset_name, train_samples=TRAIN_SAMPLES, val_samples=VAL_SAMPLES, epochs=EPOCHS):
+def run_experiment(mode, dataset_name, train_samples=TRAIN_SAMPLES, val_samples=VAL_SAMPLES, epochs=EPOCHS, rank=LORA_RANK):
     if dataset_name not in DATASET_CONFIG:
         raise ValueError(f"Unsupported dataset '{dataset_name}'. Choose from: {list(DATASET_CONFIG.keys())}")
     if mode not in MODE_CONFIG:
@@ -100,7 +101,10 @@ def run_experiment(mode, dataset_name, train_samples=TRAIN_SAMPLES, val_samples=
         train_dataset = train_dataset.map(tokenize, batched=True)
 
     # 4. Model Setup
-    model = mode_cfg["get_model"](num_labels=data_cfg["num_labels"])
+    if mode == "lora":
+        model = mode_cfg["get_model"](num_labels=data_cfg["num_labels"], r=rank)
+    else:
+        model = mode_cfg["get_model"](num_labels=data_cfg["num_labels"])
     param_info = count_parameters(model)
     
     print(f"\nParameter counts ({mode}):")
@@ -118,8 +122,10 @@ def run_experiment(mode, dataset_name, train_samples=TRAIN_SAMPLES, val_samples=
 
     batch_size = 8
 
+    run_tag = f"{mode}_{dataset_name}_r{rank}" if mode == "lora" else f"{mode}_{dataset_name}"
+
     args = TrainingArguments(
-        output_dir=f"results/{mode}_{dataset_name}",
+        output_dir=f"results/{run_tag}",
         eval_strategy="epoch",
         logging_strategy="epoch",
         learning_rate=mode_cfg["learning_rate"],
@@ -147,7 +153,7 @@ def run_experiment(mode, dataset_name, train_samples=TRAIN_SAMPLES, val_samples=
         trainer.train()
         train_time_sec = time.time() - train_start
 
-        model_dir = f"./models/{mode}_{dataset_name}"
+        model_dir = f"./models/{run_tag}"
         trainer.save_model(model_dir)
         print(f"\nSaved model to {model_dir}")
 
@@ -172,12 +178,12 @@ def run_experiment(mode, dataset_name, train_samples=TRAIN_SAMPLES, val_samples=
         checkpoint_size_mb /= 1024**2
 
     # 7. Structured Logging & Saving Results
+    metadata = {"mode": mode, "dataset": dataset_name, "device": device}
+    if mode == "lora":
+        metadata["r"] = rank
+
     info = {
-        "metadata": {
-            "mode": mode,
-            "dataset": dataset_name,
-            "device": device,
-        },
+        "metadata": metadata,
         "model": param_info,
         "training": {
             "executed": is_training,
@@ -201,7 +207,7 @@ def run_experiment(mode, dataset_name, train_samples=TRAIN_SAMPLES, val_samples=
         info["training"]["model_output_dir"] = model_dir
 
     os.makedirs("./results", exist_ok=True)
-    info_path = f"./results/{mode}_{dataset_name}.json"
+    info_path = f"./results/{run_tag}.json"
     
     with open(info_path, "w") as f:
         json.dump(info, f, indent=4)
@@ -216,9 +222,11 @@ def main():
     parser.add_argument("--train_samples", type=int, default=TRAIN_SAMPLES)
     parser.add_argument("--val_samples", type=int, default=VAL_SAMPLES)
     parser.add_argument("--epochs", type=int, default=EPOCHS)
-    
+    parser.add_argument("--rank", type=int, default=LORA_RANK,
+                        help="LoRA rank (only used when --mode lora, default 8)")
+
     args = parser.parse_args()
-    run_experiment(args.mode, args.dataset, args.train_samples, args.val_samples, args.epochs)
+    run_experiment(args.mode, args.dataset, args.train_samples, args.val_samples, args.epochs, args.rank)
 
 
 if __name__ == "__main__":
