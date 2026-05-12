@@ -1,11 +1,15 @@
+# Binary files  
 *.png
 *.pdf
 *.jpg
+
+# Python virtual environment and cache
 .venv
 __pycache__/
 .ipynb_checkpoints/
-*.log
-models/
+
+# System files
+.DS_Store
 
 # LaTeX auxiliary files
 *.aux
@@ -14,3 +18,7 @@ models/
 *.fls
 *.fdb_latexmk
 *.synctex.gz
+
+# Misc.
+*.log
+models/
