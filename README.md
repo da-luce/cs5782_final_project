@@ -23,16 +23,20 @@ This result validates the core LoRA claim: a low-rank update with ~0.3M adapter 
 
 ```
 code/
-  lora.py             LoRALinear layer, apply_lora(), count_parameters()
-  models.py           get_baseline_model() and get_lora_model()
-  train.py            Training script (--mode baseline|finetune|lora, --dataset sst2|mnli)
-  ablation.py         Rank ablation experiment (--rank r --dataset ..., --compare)
-  analyze_truncation.py  Sequence-length statistics justifying 128-token truncation
+  demo.ipynb            Colab notebook — runs all experiments and prints comparison table
+  lora/
+    lora.py             LoRALinear layer, apply_lora(), count_parameters()
+    models.py           get_baseline_model() and get_lora_model()
+    train.py            Training script (--mode baseline|finetune|lora, --dataset sst2|mnli, --rank r)
+  misc/
+    analyze_truncation.py  Sequence-length statistics justifying 128-token truncation
+  plot/
+    make_diagrams.py    Plot generation for results figures
+    plot_model.py       LoRA weight heatmap visualization
 data/                 Dataset notes — data is auto-downloaded via HuggingFace
 results/              JSON result files produced per experiment run
 poster/               Poster PDF
 report/               Final report PDF (report.tex + compiled PDF)
-demo.ipynb            Colab notebook — runs all experiments and prints comparison table
 requirements.txt
 ```
 
@@ -58,7 +62,7 @@ requirements.txt
 
 ### Option A — Google Colab (recommended)
 
-1. Open [`demo.ipynb`](./demo.ipynb) in Google Colab.
+1. Open [`demo.ipynb`](./code/demo.ipynb) in Google Colab.
 2. Set runtime to **GPU** (Runtime -> Change runtime type -> T4 or better).
 3. Run all cells--experiments run sequentially and print a comparison table at the end.
 
@@ -70,8 +74,8 @@ cd cs5782_final_project
 python3 -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 
-# Run from code/ directory
-cd code
+# Run from code/lora/ directory
+cd code/lora
 
 # Baseline (no fine-tuning, evaluation only)
 python train.py --mode baseline --dataset sst2
@@ -86,11 +90,10 @@ python train.py --mode lora --dataset sst2
 python train.py --mode lora --dataset mnli
 
 # Rank ablation
-python ablation.py --rank 2  --dataset sst2
-python ablation.py --rank 4  --dataset sst2
-python ablation.py --rank 8  --dataset sst2
-python ablation.py --rank 16 --dataset sst2
-python ablation.py --compare --dataset sst2
+python train.py --mode lora --rank 2  --dataset sst2
+python train.py --mode lora --rank 4  --dataset sst2
+python train.py --mode lora --rank 8  --dataset sst2
+python train.py --mode lora --rank 16 --dataset sst2
 ```
 
 Optional flags for `train.py`: `--train_samples` (default 50000), `--val_samples` (default 500), `--epochs` (default 5).
