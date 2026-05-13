@@ -211,6 +211,9 @@ def rank_ablation_plot(results_dir, out_dir):
     fig.tight_layout()
     path = os.path.join(out_dir, "rank_ablation.png")
     fig.savefig(path, dpi=150)
+
+    plt.show()
+
     plt.close(fig)
     print(f"Saved {path}")
 
