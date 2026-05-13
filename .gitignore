@@ -2,6 +2,9 @@
 *.pdf
 *.jpg
 
+# Submission files
+!report/12_lora_2page_report.pdf
+
 # Python virtual environment and cache
 .venv
 __pycache__/
