@@ -36,7 +36,7 @@ code/
 data/                 Dataset notes — data is auto-downloaded via HuggingFace
 results/              JSON result files produced per experiment run
 poster/               Poster PDF
-report/               Final report PDF (report.tex + compiled PDF)
+report/               Final report PDF
 requirements.txt
 ```
 
@@ -96,7 +96,7 @@ python train.py --mode lora --rank 8  --dataset sst2
 python train.py --mode lora --rank 16 --dataset sst2
 ```
 
-Optional flags for `train.py`: `--train_samples` (default 50000), `--val_samples` (default 500), `--epochs` (default 5).
+Optional flags for `train.py`: `--train_samples` (default 5000), `--val_samples` (default 500), `--epochs` (default 5). Note: reported results used `--train_samples 50000 --epochs 3`.
 
 Results are saved as JSON files in `results/`.
 
